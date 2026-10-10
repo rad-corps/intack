@@ -8,6 +8,7 @@ import android.content.Intent
 import android.os.Build
 import android.text.format.DateFormat
 import app.twodo.TwoDoApp
+import app.twodo.data.Diagnostics
 import app.twodo.model.CalendarEntry
 import app.twodo.model.SpaceKind
 import app.twodo.model.TodoList
@@ -35,6 +36,7 @@ object CalendarAlerts {
 
     /** Sets (or clears) both alarms for the next time they're due. */
     fun reschedule(context: Context) {
+        Diagnostics.count("Background: alarm reschedules")
         val app = context.applicationContext as TwoDoApp
         val identity = app.identity
         val now = LocalDateTime.now()
@@ -123,6 +125,7 @@ object CalendarAlerts {
 /** The daily schedule and reminder alarms going off. Private to the app. */
 class AlertReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
+        Diagnostics.count("Background: alarms")
         CalendarAlerts.onAlarm(context, intent.action)
     }
 }

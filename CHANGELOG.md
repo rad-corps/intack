@@ -5,6 +5,12 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+**Battery diagnostics.** A new switch, Settings › Diagnostics, shows a small readout of how hard the
+app is working on top of every screen. Tap it to see where the battery goes: processor time by part of
+the app, on screen versus in the background, a per-minute history for the last hour, network use, and
+how often it talks to the servers. With the switch on, leave your phone for a while, then open the app,
+tap Copy and send us the text. It helps us track down battery drain. Turn it off again in Settings.
+
 ## v0.6.14 — 2026-10-11
 
 **More useful crash reports.** When the app closes because of a crash in the connection code, the

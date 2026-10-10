@@ -23,10 +23,12 @@ import androidx.compose.ui.unit.Density
 import androidx.core.content.IntentCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.twodo.data.Diagnostics
 import app.twodo.model.Invite
 import app.twodo.model.ShareLink
 import app.twodo.sync.Notifications
 import app.twodo.sync.SyncService
+import app.twodo.ui.DiagnosticsOverlay
 import app.twodo.ui.QrImage
 import app.twodo.ui.TwoDoRoot
 import kotlinx.coroutines.launch
@@ -68,6 +70,8 @@ class MainActivity : ComponentActivity() {
                     )
                 }
             }
+            val diagnostics by Diagnostics.enabled.collectAsStateWithLifecycle()
+            if (diagnostics) DiagnosticsOverlay()
         }
     }
 
@@ -82,12 +86,14 @@ class MainActivity : ComponentActivity() {
         // and this brings it back if it was stopped while the app was in the background.
         if (app.identity.backgroundSync) SyncService.setEnabled(this, true)
         app.visibleActivities++
+        Diagnostics.setVisible(true)
         app.sync.acquire()
     }
 
     override fun onStop() {
         app.sync.release()
         app.visibleActivities--
+        if (app.visibleActivities == 0) Diagnostics.setVisible(false)
         super.onStop()
     }
 

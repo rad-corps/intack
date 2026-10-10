@@ -2,6 +2,7 @@ package app.twodo
 
 import android.app.Application
 import app.twodo.data.CrashLog
+import app.twodo.data.Diagnostics
 import app.twodo.data.Identity
 import app.twodo.data.ListRepository
 import app.twodo.model.SpaceKind
@@ -57,6 +58,7 @@ class TwoDoApp : Application() {
         CrashLog.install(this)
         runCatching { CrashLog.noteNativeCrashes(this) }
         identity = Identity(this)
+        if (identity.diagnostics) Diagnostics.setEnabled(true)
         repo = ListRepository(File(filesDir, "lists"), identity)
         sync = SyncManager(this, repo, identity)
         appTheme = MutableStateFlow(identity.themeId)
@@ -119,6 +121,11 @@ class TwoDoApp : Application() {
     fun setTextScale(scale: Float) {
         identity.textScale = scale
         textScale.value = scale
+    }
+
+    fun setDiagnostics(enabled: Boolean) {
+        identity.diagnostics = enabled
+        Diagnostics.setEnabled(enabled)
     }
 
     fun setBackgroundSync(enabled: Boolean) {

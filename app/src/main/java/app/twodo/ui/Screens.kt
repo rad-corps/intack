@@ -969,6 +969,7 @@ private fun SettingsDialog(app: TwoDoApp, onDismiss: () -> Unit, onNotifications
     var crashReports by remember { mutableStateOf(CrashLog.reports(context)) }
     var showLog by remember { mutableStateOf(false) }
     var direct by remember { mutableStateOf(app.identity.directConnections) }
+    var diagnostics by remember { mutableStateOf(app.identity.diagnostics) }
     if (showLog) return ConnectionLogDialog(onDismiss = { showLog = false })
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1097,6 +1098,18 @@ private fun SettingsDialog(app: TwoDoApp, onDismiss: () -> Unit, onNotifications
                         }) { Text("Delete them") }
                     }
                 }
+                Spacer(Modifier.height(16.dp))
+                Row(Modifier.fillMaxWidth().toggleable(value = diagnostics, onValueChange = { diagnostics = it }), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Diagnostics")
+                        Text(
+                            "Shows where the app spends battery, on top of every screen: processor use, network and sync activity.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(checked = diagnostics, onCheckedChange = null)
+                }
                 Spacer(Modifier.height(8.dp))
                 TextButton(onClick = { showLog = true }, contentPadding = PaddingValues(0.dp)) { Text("Connection log") }
             }
@@ -1117,6 +1130,7 @@ private fun SettingsDialog(app: TwoDoApp, onDismiss: () -> Unit, onNotifications
                     app.sync.refresh()
                 }
                 if (background != app.identity.backgroundSync) app.setBackgroundSync(background)
+                if (diagnostics != app.identity.diagnostics) app.setDiagnostics(diagnostics)
                 onDismiss()
             }) { Text("Save") }
         },

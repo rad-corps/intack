@@ -19,6 +19,7 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import app.twodo.R
 import app.twodo.TwoDoApp
+import app.twodo.data.Diagnostics
 import app.twodo.net.SyncLog
 import kotlinx.coroutines.delay
 import java.util.concurrent.TimeUnit
@@ -26,6 +27,7 @@ import java.util.concurrent.TimeUnit
 /** Best-effort catch-up every 15 minutes while online: joins every list's swarm for a short window. */
 class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
+        Diagnostics.count("Background: 15-minute check-ins")
         val sync = (applicationContext as TwoDoApp).sync
         sync.acquire()
         try {
@@ -68,6 +70,7 @@ class SyncService : Service() {
             return
         }
         running = true
+        Diagnostics.count("Background: service starts")
         (application as TwoDoApp).sync.acquire()
     }
 

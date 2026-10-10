@@ -6,6 +6,7 @@ import android.net.Network
 import android.net.NetworkCapabilities
 import android.os.SystemClock
 import android.util.Log
+import app.twodo.data.Diagnostics
 import app.twodo.data.Identity
 import app.twodo.data.ListRepository
 import app.twodo.model.AuditEntry
@@ -26,8 +27,8 @@ import app.twodo.net.TWODO_KIND
 import app.twodo.net.TWODO_LIVE_KIND
 import app.twodo.net.TrackerPool
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -44,6 +45,7 @@ import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import okhttp3.OkHttpClient
 import org.webrtc.PeerConnectionFactory
+import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 /** Messages exchanged over a peer's data channel (encrypted with the list key). */
@@ -100,7 +102,8 @@ data class SyncStatus(
 class SyncManager(context: Context, private val repo: ListRepository, private val identity: Identity) : SwarmEvents {
     private val appContext = context.applicationContext
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default.limitedParallelism(1))
+    /** Its own named thread, so Settings › Diagnostics can tell sync work from the rest. */
+    private val scope = CoroutineScope(SupervisorJob() + Executors.newSingleThreadExecutor { Thread(it, "TwoDo-sync") }.asCoroutineDispatcher())
     private val json = Json { ignoreUnknownKeys = true }
     private val http = OkHttpClient.Builder().pingInterval(20, TimeUnit.SECONDS).build()
     private val peerId = ListSwarm.randomId()
@@ -180,6 +183,7 @@ class SyncManager(context: Context, private val repo: ListRepository, private va
                             else -> "other"
                         }
                         SyncLog.add("network available: $kind")
+                        Diagnostics.count("Sync: network changes")
                         pool?.kick()
                         relays?.kick()
                         swarms.values.forEach { it.kick() }
@@ -215,6 +219,7 @@ class SyncManager(context: Context, private val repo: ListRepository, private va
 
     /** Runs one swarm (direct connections) and one relay subscription per list while in use; none otherwise. */
     private suspend fun reconcile() {
+        Diagnostics.count("Sync: reconciles")
         val wanted = if (users > 0) repo.lists.value else emptyMap()
         val direct = if (identity.directConnections) wanted else emptyMap()
         (swarms.keys - direct.keys).forEach { id -> swarms.remove(id)?.stop() }
@@ -561,6 +566,7 @@ class SyncManager(context: Context, private val repo: ListRepository, private va
     }
 
     private fun publishStatus() {
+        Diagnostics.count("Sync: status refreshes")
         val recent = SystemClock.elapsedRealtime() - PRESENCE_WINDOW_MS
         _status.value = keys.keys.associateWith { id ->
             val open = swarms[id]?.openPeers.orEmpty()

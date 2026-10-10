@@ -1,6 +1,7 @@
 package app.twodo.net
 
 import android.os.SystemClock
+import app.twodo.data.Diagnostics
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -57,6 +58,7 @@ private class NostrRelay(
     fun connect() {
         if (closed || socket != null) return
         reconnect?.cancel()
+        Diagnostics.count("Relays: connection attempts")
         socket = http.newWebSocket(Request.Builder().url(url).build(), Listener())
     }
 
@@ -71,7 +73,10 @@ private class NostrRelay(
         if (sender?.isActive != true) {
             sender = scope.launch {
                 while (outbox.isNotEmpty() && isOpen) {
-                    socket?.send(outbox.removeFirst().toString())
+                    val text = outbox.removeFirst().toString()
+                    Diagnostics.count("Relays: messages out")
+                    Diagnostics.count("Relays: out data", text.length.toLong())
+                    socket?.send(text)
                     delay(interval)
                 }
             }
@@ -108,6 +113,8 @@ private class NostrRelay(
         }
 
         override fun onMessage(webSocket: WebSocket, text: String) {
+            Diagnostics.count("Relays: messages in")
+            Diagnostics.count("Relays: in data", text.length.toLong())
             val message = runCatching { Json.parseToJsonElement(text).jsonArray }.getOrNull() ?: return
             scope.launch { if (webSocket === socket) onMessage(this@NostrRelay, message) }
         }

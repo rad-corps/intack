@@ -59,6 +59,11 @@ class Identity(context: Context) {
         get() = prefs.getBoolean("directConnections", true)
         set(value) = prefs.edit { putBoolean("directConnections", value) }
 
+    /** Settings › Diagnostics: an overlay showing where the app spends battery. */
+    var diagnostics: Boolean
+        get() = prefs.getBoolean("diagnostics", false)
+        set(value) = prefs.edit { putBoolean("diagnostics", value) }
+
     /** Text size: 1 is normal; larger for easier reading. Personal, not part of any group's look. */
     var textScale: Float
         get() = prefs.getFloat("textScale", 1f)

@@ -2,6 +2,7 @@ package app.twodo.net
 
 import android.os.SystemClock
 import android.util.Log
+import app.twodo.data.Diagnostics
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -220,6 +221,7 @@ class ListSwarm(
             }
         }
         online.forEach { it.send(message) }
+        Diagnostics.count("Direct: offers announced", offers.size.toLong())
         trace("announced ${offers.size} offers to ${online.size} tracker(s); waited ${SystemClock.elapsedRealtime() - offersStarted}ms for offers")
     }
 
@@ -242,6 +244,7 @@ class ListSwarm(
     private suspend fun handleOffer(tracker: TrackerClient, from: String, offerId: String, sdp: String) {
         if (peers.containsKey(from)) return
         trace("offer from ${from.take(4)}")
+        Diagnostics.count("Direct: offers answered")
         val peer = Peer(factory, scope, this).also { it.remotePeerId = from }
         peers[from] = peer
         val answerStarted = SystemClock.elapsedRealtime()

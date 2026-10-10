@@ -474,7 +474,10 @@ class ListRepository(private val dir: File, private val identity: Identity) {
         val list = _lists.value[listId] ?: return@withLock
         withContext(Dispatchers.IO) {
             val tmp = File(dir, "${list.id}.json.tmp")
-            tmp.writeText(json.encodeToString(list))
+            val text = json.encodeToString(list)
+            Diagnostics.count("Storage: list writes")
+            Diagnostics.count("Storage: written data", text.length.toLong())
+            tmp.writeText(text)
             if (!tmp.renameTo(file(list.id))) {
                 file(list.id).delete()
                 tmp.renameTo(file(list.id))

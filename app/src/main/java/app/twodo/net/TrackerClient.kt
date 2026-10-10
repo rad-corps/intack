@@ -1,6 +1,7 @@
 package app.twodo.net
 
 import android.util.Log
+import app.twodo.data.Diagnostics
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -36,6 +37,7 @@ class TrackerClient(
     fun connect() {
         if (closed || socket != null) return
         reconnectJob?.cancel()
+        Diagnostics.count("Trackers: connection attempts")
         socket = http.newWebSocket(Request.Builder().url(url).build(), Listener())
     }
 
@@ -45,7 +47,13 @@ class TrackerClient(
         if (socket == null) connect()
     }
 
-    fun send(message: JsonObject): Boolean = isOpen && socket?.send(message.toString()) == true
+    fun send(message: JsonObject): Boolean {
+        if (!isOpen) return false
+        val text = message.toString()
+        Diagnostics.count("Trackers: messages out")
+        Diagnostics.count("Trackers: out data", text.length.toLong())
+        return socket?.send(text) == true
+    }
 
     fun close() {
         closed = true
@@ -66,6 +74,8 @@ class TrackerClient(
         }
 
         override fun onMessage(webSocket: WebSocket, text: String) {
+            Diagnostics.count("Trackers: messages in")
+            Diagnostics.count("Trackers: in data", text.length.toLong())
             val message = runCatching { Json.parseToJsonElement(text).jsonObject }.getOrNull() ?: return
             scope.launch { if (webSocket === socket) onMessage(this@TrackerClient, message) }
         }

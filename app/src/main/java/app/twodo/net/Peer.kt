@@ -2,6 +2,7 @@ package app.twodo.net
 
 import android.util.Log
 import android.os.SystemClock
+import app.twodo.data.Diagnostics
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.async
@@ -46,6 +47,10 @@ class Peer(factory: PeerConnectionFactory, private val scope: CoroutineScope, pr
     var remotePeerId: String? = null
     var deviceName: String? = null
     val createdAt = System.currentTimeMillis()
+
+    init {
+        Diagnostics.count("Direct: connections created")
+    }
 
     private val gathered = CompletableDeferred<Unit>()
     private val gotPublicAddress = CompletableDeferred<Unit>()
@@ -99,6 +104,7 @@ class Peer(factory: PeerConnectionFactory, private val scope: CoroutineScope, pr
 
     fun send(text: String): Boolean = live {
         val dc = channel
+        Diagnostics.count("Direct: messages out")
         dc != null && dc.state() == DataChannel.State.OPEN && dc.send(DataChannel.Buffer(ByteBuffer.wrap(text.toByteArray()), false))
     } == true
 
@@ -195,6 +201,8 @@ class Peer(factory: PeerConnectionFactory, private val scope: CoroutineScope, pr
         override fun onMessage(buffer: DataChannel.Buffer) {
             if (buffer.binary || closed) return
             val bytes = ByteArray(buffer.data.remaining()).also { buffer.data.get(it) }
+            Diagnostics.count("Direct: messages in")
+            Diagnostics.count("Direct: in data", bytes.size.toLong())
             scope.launch { events.onMessage(this@Peer, String(bytes)) }
         }
     }
@@ -203,6 +211,7 @@ class Peer(factory: PeerConnectionFactory, private val scope: CoroutineScope, pr
         scope.launch {
             if (openNotified || closed) return@launch
             openNotified = true
+            Diagnostics.count("Direct: connections opened")
             events.onOpen(this@Peer)
         }
     }
@@ -246,7 +255,7 @@ class Peer(factory: PeerConnectionFactory, private val scope: CoroutineScope, pr
     }
 
     private companion object {
-        val disposer: java.util.concurrent.Executor = java.util.concurrent.Executors.newSingleThreadExecutor()
+        val disposer: java.util.concurrent.Executor = java.util.concurrent.Executors.newSingleThreadExecutor { Thread(it, "TwoDo-dispose") }
 
         const val GATHER_CAP_MS = 1_500L
         const val SLOW_GATHER_MS = 400L
