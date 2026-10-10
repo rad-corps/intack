@@ -14,7 +14,11 @@ $ErrorActionPreference = 'Stop'
 Set-Location (Split-Path $PSScriptRoot)
 
 if (git status --porcelain) { throw 'Commit or stash your changes first.' }
-if ((git branch --show-current) -ne 'main') { throw 'Releases are made from main.' }
+# Release from main, or from any branch (e.g. a worktree's) that builds on GitHub's main: the result is
+# pushed to main either way.
+git fetch -q origin main
+git merge-base --is-ancestor origin/main HEAD
+if ($LASTEXITCODE) { throw 'This branch is behind or diverged from origin/main; merge or rebase first.' }
 if (git tag -l "v$Version") { throw "v$Version already exists." }
 if (-not (Test-Path "$HOME/.twodo/keystore.properties")) { throw 'Signing key not found in ~/.twodo/.' }
 if (-not $env:JAVA_HOME) {
@@ -60,7 +64,7 @@ Copy-Item app/build/outputs/bundle/release/app-release.aab $bundle -Force
 
 git commit -q -am "Release v$Version"
 git tag -a "v$Version" -m "TwoDo v$Version"
-git push origin main "v$Version"
+git push origin HEAD:main "v$Version"
 if ($LASTEXITCODE) { throw 'Push failed; the release commit and tag are local only.' }
 
 $notesFile = New-TemporaryFile
