@@ -48,12 +48,16 @@ object CrashLog {
 
     /**
      * Crashes in native code (WebRTC, for one) end the app without reaching [install]'s handler, but
-     * Android remembers why the app last ended (Android 11+). Notes any such crash not yet noted, with
-     * the readable parts of Android's crash record (its function names).
+     * Android remembers why the app last ended (Android 11+). Notes any such crash not yet noted: the
+     * crashing thread's call stack and the fault, decoded from Android's crash record, and the version
+     * that was running.
      */
     fun noteNativeCrashes(context: Context) {
         if (Build.VERSION.SDK_INT < 30) return
         val prefs = context.getSharedPreferences("crashlog", Context.MODE_PRIVATE)
+        // The crash was in an earlier run, which may have been an older version (before an update).
+        val lastRun = prefs.getString("runningVersion", null)
+        prefs.edit().putString("runningVersion", "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})").apply()
         val since = prefs.getLong("nativeSeenUpTo", 0)
         val exits = context.getSystemService(ActivityManager::class.java)
             .getHistoricalProcessExitReasons(null, 0, KEEP)
@@ -62,7 +66,11 @@ object CrashLog {
         exits.forEach { exit ->
             val report = buildString {
                 appendLine("Native crash at ${stamp.format(Instant.ofEpochMilli(exit.timestamp))} in ${exit.processName}: ${exit.description}")
-                readableParts(exit).forEach { appendLine("  $it") }
+                lastRun?.let { appendLine("Version running before this start: $it") }
+                val record = crashRecord(exit)
+                val decoded = record?.let(Tombstone::parse)
+                if (decoded != null) append(decoded.describe())
+                else readableParts(record).forEach { appendLine("  $it") }
             }
             dir(context).apply { mkdirs() }.resolve("${exit.timestamp}.txt").writeText(report)
         }
@@ -70,10 +78,13 @@ object CrashLog {
         reports(context).dropLast(KEEP).forEach { it.delete() }
     }
 
-    /** Function names from the crash record (a binary file), in order: enough to see where it happened. */
-    private fun readableParts(exit: ApplicationExitInfo): List<String> {
-        if (Build.VERSION.SDK_INT < 31) return emptyList()
-        val bytes = runCatching { exit.traceInputStream?.use { it.readBytes() } }.getOrNull() ?: return emptyList()
+    /** Android's record of a native crash (Android 12+). */
+    private fun crashRecord(exit: ApplicationExitInfo): ByteArray? =
+        if (Build.VERSION.SDK_INT < 31) null else runCatching { exit.traceInputStream?.use { it.readBytes() } }.getOrNull()
+
+    /** Fallback when the record can't be decoded: the readable names in it, in order. */
+    private fun readableParts(bytes: ByteArray?): List<String> {
+        if (bytes == null) return emptyList()
         return Regex("""[A-Za-z_$][\w$.:<>~]{5,}(?:\([^)]{0,80}\))?(?:\+\d+)?""")
             .findAll(String(bytes, Charsets.ISO_8859_1))
             .map { it.value }

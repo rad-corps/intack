@@ -5,6 +5,11 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+**More useful crash reports.** When the app closes because of a crash in the connection code, the
+crash report now says exactly where it happened (the crashing thread and the steps leading to it) and
+which version was running, instead of a jumble of names. If you've opted in to crash reports, those are
+what we need to fix the rest of these crashes.
+
 ## v0.6.13 — 2026-10-10
 
 **Fixed: the app closing by itself, again and again.** When a connection between phones was shut down
