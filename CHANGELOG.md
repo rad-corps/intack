@@ -5,6 +5,8 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+## v0.6.14 — 2026-10-11
+
 **More useful crash reports.** When the app closes because of a crash in the connection code, the
 crash report now says exactly where it happened (the crashing thread and the steps leading to it) and
 which version was running, instead of a jumble of names. If you've opted in to crash reports, those are
