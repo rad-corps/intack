@@ -27,6 +27,7 @@ import app.twodo.TwoDoApp
 import app.twodo.model.Look
 import app.twodo.model.SpaceKind
 import app.twodo.model.TodoList
+import app.twodo.model.hasSharedLook
 import app.twodo.model.sharedLook
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -59,11 +60,16 @@ fun rememberLook(app: TwoDoApp, list: TodoList?, appTheme: AppTheme): ResolvedLo
     val lists by app.repo.lists.collectAsStateWithLifecycle()
     // Photos are written to disk after the group changes; this ticks when one lands.
     val photosReady by app.repo.photos.collectAsStateWithLifecycle()
+    val appLook by app.appLook.collectAsStateWithLifecycle()
     val group = list?.lookGroup(lists)
-    if (group == null) return ResolvedLook(list?.theme(appTheme) ?: appTheme, null, 0f)
-    val look = group.sharedLook
+    // A group's look if anyone set one; a list's own look on this phone; otherwise the app's.
+    val look = when {
+        group != null && group.hasSharedLook -> group.sharedLook
+        group == null && list?.look != null -> list.look
+        else -> appLook.copy(themeId = list?.themeId?.takeIf { group == null } ?: appLook.themeId)
+    }
     val photo by produceState<ImageBitmap?>(null, look.photoId, photosReady) {
-        value = look.photoId?.let { app.repo.photoFile(it) }?.takeIf { it.exists() }?.let { loadPhoto(it) }
+        value = loadLookPhoto(app, look.photoId)
     }
     val photoTheme = remember(photo) { photo?.let { photoTheme(it) } }
     return remember(look, photo, photoTheme, appTheme) { resolve(look, appTheme, photo, photoTheme) }

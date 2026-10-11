@@ -35,45 +35,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
-/**
- * Grid of theme swatches. With [appTheme] given, the first option is "App theme" (picks null): for a
- * list or diary that should simply follow the app.
- */
-@Composable
-internal fun ThemePickerDialog(
-    title: String,
-    selected: String?,
-    appTheme: AppTheme? = null,
-    icon: ImageVector? = null,
-    onDismiss: () -> Unit,
-    onPick: (String?) -> Unit,
-) {
-    val options: List<Pair<String?, AppTheme>> = listOfNotNull(appTheme?.let { null to it }) + THEMES.map { it.id to it }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = {
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(3),
-                modifier = Modifier.heightIn(max = 440.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                items(options, key = { it.first ?: "app" }) { (id, theme) ->
-                    ThemeSwatch(
-                        theme = theme,
-                        label = if (id == null) "App theme" else theme.name,
-                        selected = id == selected,
-                        icon = icon,
-                        onClick = { onPick(id) },
-                    )
-                }
-            }
-        },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } },
-    )
-}
-
 /** A miniature of the theme: its background, a fake row in its text colour, and its accent. */
 @Composable
 internal fun ThemeSwatch(theme: AppTheme, label: String, selected: Boolean, icon: ImageVector?, onClick: () -> Unit) {

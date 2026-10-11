@@ -5,6 +5,8 @@ import app.twodo.data.CrashLog
 import app.twodo.data.Diagnostics
 import app.twodo.data.Identity
 import app.twodo.data.ListRepository
+import app.twodo.model.Look
+import app.twodo.model.PhotoChoice
 import app.twodo.model.SpaceKind
 import app.twodo.sync.CalendarAlerts
 import app.twodo.sync.ListEvent
@@ -36,6 +38,10 @@ class TwoDoApp : Application() {
     lateinit var textScale: MutableStateFlow<Float>
         private set
 
+    /** The app's background and photo colours, for screens outside groups (see [Identity.appLook]). */
+    lateinit var appLook: MutableStateFlow<Look>
+        private set
+
     /** This person's chosen colour, or null for the one derived from their device. */
     lateinit var myColor: MutableStateFlow<Long?>
         private set
@@ -63,6 +69,7 @@ class TwoDoApp : Application() {
         sync = SyncManager(this, repo, identity)
         appTheme = MutableStateFlow(identity.themeId)
         textScale = MutableStateFlow(identity.textScale)
+        appLook = MutableStateFlow(identity.appLook)
         myColor = MutableStateFlow(identity.myColor)
         Notifications.createChannels(this)
         SyncWorker.schedule(this)
@@ -116,6 +123,14 @@ class TwoDoApp : Application() {
         identity.myColor = color
         myColor.value = color
         sync.nameChanged()
+    }
+
+    /** Sets the app's look: [themeId] for its colours, and [look] for its background (and photo colours). */
+    suspend fun setAppLook(themeId: String, look: Look, photo: PhotoChoice) {
+        val next = look.copy(photoId = repo.choosePhoto(photo, appLook.value.photoId), photoParts = 0)
+        identity.appLook = next
+        appLook.value = next
+        setTheme(themeId)
     }
 
     fun setTextScale(scale: Float) {

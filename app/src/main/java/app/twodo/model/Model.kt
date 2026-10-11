@@ -105,6 +105,8 @@ data class TodoList(
     val addedAt: Long = 0,
     /** Local only: when the user last said "not now" to archiving it with everything ticked. */
     val archiveOfferDeclinedAt: Long = 0,
+    /** Local only: this phone's look for a list outside any group (null: [themeId] and the app's background). */
+    val look: Look? = null,
 ) {
     val visibleItems: List<Item>
         get() = items.values.filter { !it.deleted }.sortedWith(compareBy({ it.position }, { it.id }))
@@ -125,6 +127,17 @@ data class Look(
     /** Accent colour (ARGB) overriding the theme's; null keeps the theme's. */
     val accent: Long? = null,
 )
+
+/** A change of background in a look editor. */
+sealed interface PhotoChoice {
+    /** Leave the background as it is. */
+    data object Keep : PhotoChoice
+    data object None : PhotoChoice
+    /** A background that comes with the app (`builtin:<id>`). */
+    data class Builtin(val photoId: String) : PhotoChoice
+    /** A photo of the user's own, as a backdrop-sized JPEG. */
+    class Own(val jpeg: ByteArray) : PhotoChoice
+}
 
 /** Just joined and nothing received yet. */
 val TodoList.isJoining: Boolean get() = !createdHere && members.isEmpty() && items.isEmpty()

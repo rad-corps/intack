@@ -67,6 +67,9 @@ val Item.isPhotoPart: Boolean get() = id.startsWith(PHOTO_PREFIX)
 
 private val lookJson = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
 
+/** Someone has set the group's look (otherwise each phone shows its own). */
+val TodoList.hasSharedLook: Boolean get() = items[GROUP_LOOK_ITEM]?.deleted == false
+
 /** The group's shared look; the default (follow each phone's theme, no photo) if none was set. */
 val TodoList.sharedLook: Look
     get() = items[GROUP_LOOK_ITEM]?.takeIf { !it.deleted }

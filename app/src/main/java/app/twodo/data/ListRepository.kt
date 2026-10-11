@@ -10,6 +10,7 @@ import app.twodo.model.STATUS_DELETED
 import app.twodo.model.STATUS_ARCHIVED
 import app.twodo.model.LIST_STATUS_ITEM
 import app.twodo.model.Look
+import app.twodo.model.PhotoChoice
 import app.twodo.model.indexForSection
 import app.twodo.model.isPhotoPart
 import app.twodo.model.photoBase64
@@ -194,17 +195,18 @@ class ListRepository(private val dir: File, private val identity: Identity) {
     }
 
     /**
-     * Sets the group's look for everyone in it. [photoJpeg] replaces the photo; with [removePhoto] the
-     * photo goes; otherwise the current one stays.
+     * Sets the group's look for everyone in it, changing its background as [photo] says. A built-in
+     * background is just a name; a photo of the user's own is sent to everyone in pieces.
      */
-    suspend fun setGroupLook(groupId: String, look: Look, photoJpeg: ByteArray? = null, removePhoto: Boolean = false): Unit = withContext(NonCancellable) { setGroupLookLocked(groupId, look, photoJpeg, removePhoto) }
+    suspend fun setGroupLook(groupId: String, look: Look, photo: PhotoChoice): Unit = withContext(NonCancellable) { setGroupLookLocked(groupId, look, photo) }
 
-    private suspend fun setGroupLookLocked(groupId: String, look: Look, photoJpeg: ByteArray?, removePhoto: Boolean): Unit = mutex.withLock {
+    private suspend fun setGroupLookLocked(groupId: String, look: Look, photo: PhotoChoice): Unit = mutex.withLock {
         val group = _lists.value[groupId]?.takeIf { it.kind == SpaceKind.GROUP } ?: return
         val now = System.currentTimeMillis()
         val old = group.sharedLook
         var next = look.copy(photoId = old.photoId, photoParts = old.photoParts)
-        if (photoJpeg != null || removePhoto) {
+        val photoJpeg = (photo as? PhotoChoice.Own)?.jpeg
+        if (photo != PhotoChoice.Keep) {
             // Clear the old photo's pieces so they don't linger in everyone's copy.
             group.items.values.filter { it.isPhotoPart && !it.deleted }.forEach { part ->
                 putGroupItem(groupId, part.edited(identity.deviceId, identity.deviceName, now) { copy(text = "", deleted = true) })
@@ -221,10 +223,34 @@ class ListRepository(private val dir: File, private val identity: Identity) {
             _photos.value++
             next = next.copy(photoId = photoId, photoParts = parts.size)
         }
+        if (photo is PhotoChoice.Builtin) next = next.copy(photoId = photo.photoId, photoParts = 0)
         val current = _lists.value.getValue(groupId).items[GROUP_LOOK_ITEM]
         val item = current?.edited(identity.deviceId, identity.deviceName, now) { copy(text = next.toJson(), deleted = false) }
             ?: Item(GROUP_LOOK_ITEM, next.toJson(), createdAt = 0, version = Version(now, identity.deviceId), editor = identity.deviceName)
         putGroupItem(groupId, item)
+    }
+
+    /** Sets this phone's look for a list outside any group. */
+    suspend fun setListLook(listId: String, look: Look, photo: PhotoChoice): Unit = withContext(NonCancellable) {
+        val current = _lists.value[listId] ?: return@withContext
+        val photoId = choosePhoto(photo, (current.look ?: Look()).photoId)
+        mutex.withLock {
+            val list = _lists.value[listId] ?: return@withLock
+            save(list.copy(look = look.copy(photoId = photoId, photoParts = 0)))
+        }
+    }
+
+    /** The background a look on this phone ends up with: kept, none, built in, or a newly saved photo. */
+    suspend fun choosePhoto(photo: PhotoChoice, current: String?): String? = when (photo) {
+        PhotoChoice.Keep -> current
+        PhotoChoice.None -> null
+        is PhotoChoice.Builtin -> photo.photoId
+        is PhotoChoice.Own -> {
+            val photoId = UUID.randomUUID().toString().take(8)
+            withContext(Dispatchers.IO) { photoFile(photoId).apply { parentFile?.mkdirs() }.writeBytes(photo.jpeg) }
+            _photos.value++
+            photoId
+        }
     }
 
     /** Where a group photo is kept on this phone, once it has arrived. */
@@ -457,12 +483,6 @@ class ListRepository(private val dir: File, private val identity: Identity) {
             result.conflicts.filter { it.winner.id != LIST_STATUS_ITEM }.forEach { _conflicts.tryEmit(it) }
             RemoteResult(result.accepted.map { list.items[it.id] to it }, newAudit)
         }
-
-    /** Sets this phone's theme for the list (null: follow the app). Not synced. */
-    suspend fun setTheme(listId: String, themeId: String?): Unit = mutex.withLock {
-        val list = _lists.value[listId] ?: return
-        save(list.copy(themeId = themeId))
-    }
 
     /** Records that this device now has a complete copy of the list. */
     suspend fun markFullSynced(listId: String): Unit = mutex.withLock {

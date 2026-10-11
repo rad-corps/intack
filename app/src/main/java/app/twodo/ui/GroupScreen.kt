@@ -383,7 +383,7 @@ private fun GroupSettingsTab(
             SettingRow(Icons.AutoMirrored.Outlined.Logout, "Leave group", "Removes ${group.name} from this phone", danger = true) { leaving = true }
         }
     }
-    if (editingLook) LookEditorDialog(app, group, onDismiss = { editingLook = false })
+    if (editingLook) GroupLookEditorDialog(app, group, onDismiss = { editingLook = false })
     if (renaming) {
         TextPromptDialog(title = "Rename group", label = "Name", confirm = "Save", initial = group.name, onDismiss = { renaming = false }) { name ->
             renaming = false

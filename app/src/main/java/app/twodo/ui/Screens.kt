@@ -761,7 +761,7 @@ internal fun SpaceTopBar(app: TwoDoApp, list: TodoList, status: SyncStatus, onBa
                         DropdownMenuItem(text = { Text("Delete list") }, onClick = { menu = false; confirmRemove = true })
                     }
                 } else {
-                    DropdownMenuItem(text = { Text("Theme") }, onClick = { menu = false; pickingTheme = true })
+                    DropdownMenuItem(text = { Text("Look") }, onClick = { menu = false; pickingTheme = true })
                     DropdownMenuItem(
                         text = { Text(if (list.kind == SpaceKind.LIST) "Delete" else "Remove from this phone") },
                         onClick = { menu = false; confirmRemove = true },
@@ -771,16 +771,7 @@ internal fun SpaceTopBar(app: TwoDoApp, list: TodoList, status: SyncStatus, onBa
         },
     )
     if (sharing) ShareDialog(app, list, onDismiss = { sharing = false })
-    if (pickingTheme) {
-        val appThemeId by app.appTheme.collectAsStateWithLifecycle()
-        ThemePickerDialog(
-            title = "Theme for “${list.name}”",
-            selected = list.themeId,
-            appTheme = themeById(appThemeId),
-            icon = list.kind.icon,
-            onDismiss = { pickingTheme = false },
-        ) { id -> scope.launch { app.repo.setTheme(list.id, id) } }
-    }
+    if (pickingTheme) ListLookEditorDialog(app, list, onDismiss = { pickingTheme = false })
     if (addingHeading) {
         TextPromptDialog(
             title = "Add a heading",
@@ -1004,15 +995,11 @@ private fun JoinDialog(onDismiss: () -> Unit, onJoin: (Invite) -> Unit) {
 private fun SettingsDialog(app: TwoDoApp, onDismiss: () -> Unit, onNotifications: () -> Unit) {
     var name by remember { mutableStateOf(if (app.identity.hasName) app.identity.deviceName else "") }
     var background by remember { mutableStateOf(app.identity.backgroundSync) }
-    var themeId by remember { mutableStateOf(app.identity.themeId) }
+    val themeId by app.appTheme.collectAsStateWithLifecycle()
+    val appLook by app.appLook.collectAsStateWithLifecycle()
     var pickingTheme by remember { mutableStateOf(false) }
-    if (pickingTheme) {
-        return ThemePickerDialog(
-            title = "App theme",
-            selected = themeId,
-            onDismiss = { pickingTheme = false },
-        ) { id -> if (id != null) themeId = id }
-    }
+    // Saved straight away by the editor, like the text size.
+    if (pickingTheme) return AppLookEditorDialog(app, onDismiss = { pickingTheme = false })
     var textScale by remember { mutableStateOf(app.identity.textScale) }
     var offerCrashReports by remember { mutableStateOf(app.identity.offerCrashReports) }
     val startColor = app.identity.myColor ?: defaultColor(app.identity.deviceId)
@@ -1062,9 +1049,9 @@ private fun SettingsDialog(app: TwoDoApp, onDismiss: () -> Unit, onNotifications
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(Modifier.weight(1f)) {
-                        Text("Theme")
+                        Text("Look")
                         Text(
-                            "${themeById(themeId).name} · groups can choose their own look",
+                            "${themeById(themeId).name}${appLook.photoId?.let { " with a background" }.orEmpty()} · groups can choose their own",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -1171,7 +1158,6 @@ private fun SettingsDialog(app: TwoDoApp, onDismiss: () -> Unit, onNotifications
                 if (name.isNotBlank()) app.setName(name)
                 // Only once actually changed: until then, the colour stays the one derived from this device.
                 if (myColor != startColor) app.setColor(myColor)
-                app.setTheme(themeId)
                 if (offerCrashReports && !app.identity.offerCrashReports) {
                     // Turning it on shouldn't immediately pop up old crashes; they're in Settings.
                     CrashLog.markSeen(context, app.identity)

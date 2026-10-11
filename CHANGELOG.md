@@ -5,6 +5,13 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+**Backgrounds.** Choose from 17 built-in backgrounds: corkboard, notepaper and linen, the sea, forest,
+lakes and wildflowers, one for each season, and four soft colour washes. The app's colours are picked to
+match. Your own photos still work as before. Backgrounds now go everywhere: the app's home screen
+(Settings › Look), any list or diary outside a group (⋮ › Look, just on your phone), and groups, where
+everyone sees the one chosen. A built-in background costs nothing to share with your group: only its
+name is sent.
+
 ## v0.6.17 — 2026-10-11
 
 **Archive finished lists.** Every list you have open keeps in touch with the others' phones, which uses

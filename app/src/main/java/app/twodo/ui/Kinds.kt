@@ -37,7 +37,7 @@ fun SpaceKind.label(inGroup: Boolean): String = when (this) {
 }
 
 /** The list's own theme, or [appTheme] if it follows the app. */
-fun TodoList.theme(appTheme: AppTheme): AppTheme = themeId?.let(::themeById) ?: appTheme
+fun TodoList.theme(appTheme: AppTheme): AppTheme = (look?.themeId ?: themeId)?.takeIf { it != PHOTO_THEME }?.let(::themeById) ?: appTheme
 
 /**
  * The list's kind icon on a small tile in the list's theme colours, so lists and diaries are easy to

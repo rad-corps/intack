@@ -3,6 +3,7 @@ package app.twodo.data
 import android.content.Context
 import android.os.Build
 import androidx.core.content.edit
+import app.twodo.model.Look
 import kotlinx.serialization.json.Json
 import java.util.UUID
 
@@ -58,6 +59,14 @@ class Identity(context: Context) {
     var directConnections: Boolean
         get() = prefs.getBoolean("directConnections", true)
         set(value) = prefs.edit { putBoolean("directConnections", value) }
+
+    /**
+     * The app's own look, for screens outside groups: its background and how strongly it shows. Its
+     * colours are [themeId], unless taken from the photo ([Look.themeId] "photo").
+     */
+    var appLook: Look
+        get() = runCatching { Json.decodeFromString<Look>(prefs.getString("appLook", null)!!) }.getOrDefault(Look())
+        set(value) = prefs.edit { putString("appLook", Json.encodeToString(value)) }
 
     /** Settings › Diagnostics: an overlay showing where the app spends battery. */
     var diagnostics: Boolean
