@@ -5,6 +5,12 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+**Much less battery and data use.** Thanks to the new diagnostics, we found the app kept setting up
+new connections for every list every 30 seconds, even when it was already connected, using up to a
+core's worth of processor and a lot of mobile data. Now it only looks for the others when starting,
+when the network or the app comes back, and less and less often while nobody answers. Once connected,
+it just waits quietly. Changes still arrive straight away.
+
 ## v0.6.15 — 2026-10-11
 
 **Battery diagnostics.** A new switch, Settings › Diagnostics, shows a small readout of how hard the

@@ -238,7 +238,8 @@ class SyncManager(context: Context, private val repo: ListRepository, private va
         for ((id, list) in wanted) {
             val listKeys = keys.getOrPut(id) { ListKeys(list.secret) }
             if (id in direct && id !in swarms) {
-                swarms[id] = ListSwarm(id, listKeys.topic, peerId, factory, pool, scope, this).also { it.start() }
+                val offerCount = { repo.lists.value[id]?.members?.keys?.count { it != identity.deviceId } ?: 1 }
+                swarms[id] = ListSwarm(id, listKeys.topic, peerId, factory, pool, scope, this, offerCount).also { it.start() }
             }
             if (id !in relayLists) relayLists[id] = RelayList(id, list.secret).also { it.subscribe(relays, list.relaySince) }
         }

@@ -38,11 +38,16 @@ interface SwarmEvents {
 }
 
 /**
- * Finds and connects to the other devices sharing one list. Each device announces a few WebRTC offers
- * to every tracker under the list's room id; trackers pass them to other devices in the room, which
- * answer straight away through the tracker. Offers are prepared ahead of time so an announcement goes
- * out as soon as a tracker connects. If two devices answer each other's offers at the same moment,
- * both keep the connection offered by the device with the lower tracker peer id.
+ * Finds and connects to the other devices sharing one list. Each device joins the list's room on every
+ * tracker; a device that's looking for others announces WebRTC offers there, and the trackers pass
+ * them to devices already in the room, which answer straight away through the tracker. Offers are
+ * prepared ahead of time so an announcement goes out as soon as a tracker connects. If two devices
+ * answer each other's offers at the same moment, both keep the connection offered by the device with
+ * the lower tracker peer id.
+ *
+ * Every offer is a WebRTC connection, and making one costs CPU and network, so offers are only sent
+ * while looking: on starting, when the network or app comes back, and with a growing gap while nobody
+ * answers. Once connected, a device just stays in the room; anyone arriving later makes the offer.
  * All methods must be called in [scope], which must be single-threaded.
  */
 class ListSwarm(
@@ -53,6 +58,8 @@ class ListSwarm(
     private val pool: TrackerPool,
     private val scope: CoroutineScope,
     private val events: SwarmEvents,
+    /** Offers per announcement: one for each other device that may be there to answer. */
+    private val offerCount: () -> Int = { OFFERS_PER_ANNOUNCE },
 ) : PeerEvents {
     private class PendingOffer(val id: String, val peer: Peer, val sdp: String)
 
@@ -99,11 +106,18 @@ class ListSwarm(
         announceJob?.cancel()
         announceJob = scope.launch {
             if (now) announce()
+            // Look often at first, then back off while nobody answers (the other phone may simply be off);
+            // in between, and once someone is connected, just stay in the room so others' offers reach us.
+            var offersDue = SystemClock.elapsedRealtime() + nextOfferDelay()
             while (isActive) {
-                // Look often at first, then back off while nobody answers (the other phone may simply be
-                // off); just stay discoverable once someone is connected.
-                delay(nextAnnounceDelay())
-                announce()
+                delay((offersDue - SystemClock.elapsedRealtime()).coerceIn(0, ROOM_INTERVAL_MS))
+                if (SystemClock.elapsedRealtime() >= offersDue) {
+                    // Someone may have connected since this round was planned.
+                    if (eager || openPeers.isEmpty()) announce() else stayInRoom()
+                    offersDue = SystemClock.elapsedRealtime() + nextOfferDelay()
+                } else {
+                    stayInRoom()
+                }
             }
         }
     }
@@ -130,10 +144,24 @@ class ListSwarm(
         peers.clear()
     }
 
-    private fun nextAnnounceDelay(): Long = when {
+    private fun nextOfferDelay(): Long = when {
         eager -> EAGER_INTERVAL_MS
-        openPeers.isNotEmpty() -> ANNOUNCE_INTERVAL_MS.also { searchInterval = SEARCH_INTERVAL_MS }
+        // Connected: no more offers. If the connection drops, looking starts again (see onClosed).
+        openPeers.isNotEmpty() -> Long.MAX_VALUE / 2
         else -> searchInterval.also { searchInterval = minOf(it * 2, MAX_SEARCH_INTERVAL_MS) }
+    }
+
+    /** Announces without offers: keeps this device in the tracker's room (it forgets quiet peers). */
+    private fun stayInRoom() {
+        if (stopped) return
+        val message = buildJsonObject {
+            put("action", "announce")
+            put("info_hash", topic)
+            put("peer_id", myPeerId)
+            put("numwant", 0)
+            putJsonArray("offers") {}
+        }
+        trackers.filter { it.isOpen }.forEach { it.send(message) }
     }
 
     private fun nextDelayIsShort() = eager || (openPeers.isEmpty() && searchInterval <= OFFER_TTL_MS / 2)
@@ -167,14 +195,19 @@ class ListSwarm(
     suspend fun onTrackerOpen(tracker: TrackerClient) {
         trace("tracker open ${tracker.url}")
         events.onChanged(this)
-        announce(listOf(tracker))
+        // The other trackers usually open moments apart: send the same offers rather than making more.
+        val cutoff = System.currentTimeMillis() - OFFER_TTL_MS / 2
+        val fresh = pending.values.filter { it.peer.createdAt > cutoff }
+        if (fresh.isEmpty()) announce(listOf(tracker)) else sendOffers(listOf(tracker), fresh)
     }
 
-    /** Keeps [OFFERS_PER_ANNOUNCE] offers ready, creating any missing ones in parallel. */
+    /** Keeps enough offers ready for the next announcement, creating any missing ones in parallel. */
     private fun prepareOffers() {
         if (preparing?.isActive == true || stopped) return
         preparing = scope.launch {
-            val missing = OFFERS_PER_ANNOUNCE - ready.size
+            // While inviting, someone new is in the room besides the usual members.
+            val wanted = if (eager) OFFERS_PER_ANNOUNCE else offerCount().coerceIn(1, OFFERS_PER_ANNOUNCE)
+            val missing = wanted - ready.size
             (1..missing).map { async { createOffer() } }.awaitAll().filterNotNull().forEach { ready += it }
         }
     }
@@ -206,6 +239,11 @@ class ListSwarm(
         val online = to.filter { it.isOpen }
         if (stopped || online.isEmpty()) return offers.forEach { it.peer.close() }
         offers.forEach { pending[it.id] = it }
+        sendOffers(online, offers)
+        trace("announced ${offers.size} offers to ${online.size} tracker(s); waited ${SystemClock.elapsedRealtime() - offersStarted}ms for offers")
+    }
+
+    private fun sendOffers(to: List<TrackerClient>, offers: List<PendingOffer>) {
         val message = buildJsonObject {
             put("action", "announce")
             put("info_hash", topic)
@@ -220,9 +258,8 @@ class ListSwarm(
                 }
             }
         }
-        online.forEach { it.send(message) }
+        to.forEach { it.send(message) }
         Diagnostics.count("Direct: offers announced", offers.size.toLong())
-        trace("announced ${offers.size} offers to ${online.size} tracker(s); waited ${SystemClock.elapsedRealtime() - offersStarted}ms for offers")
     }
 
     private fun expireOffers() {
@@ -313,16 +350,24 @@ class ListSwarm(
         if (peers[id] !== peer) return
         val wasOpen = peer.isOpen
         drop(peer)
-        // A connection attempt that failed: try again soon rather than at the next round.
-        if (!wasOpen) retrySoon()
+        when {
+            // A connection attempt that failed: try again soon rather than at the next round.
+            !wasOpen -> retrySoon()
+            // Lost the last connection: start looking again.
+            openPeers.isEmpty() && !stopped -> {
+                searchInterval = SEARCH_INTERVAL_MS
+                startAnnouncing(now = true)
+            }
+        }
     }
 
     companion object {
         private const val TAG = "TwoDo"
-        private const val ANNOUNCE_INTERVAL_MS = 30_000L
+        /** How often to remind the trackers this device is still in the room. */
+        private const val ROOM_INTERVAL_MS = 120_000L
         private const val SEARCH_INTERVAL_MS = 10_000L
         private const val EAGER_INTERVAL_MS = 3_000L
-        private const val MAX_SEARCH_INTERVAL_MS = 120_000L
+        private const val MAX_SEARCH_INTERVAL_MS = 600_000L
         private const val RETRY_INTERVAL_MS = 10_000L
         private const val CONNECT_TIMEOUT_MS = 5_000L
         private const val OFFER_TTL_MS = 60_000L
