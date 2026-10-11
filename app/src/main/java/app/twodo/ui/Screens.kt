@@ -123,6 +123,7 @@ import app.twodo.BuildConfig
 import app.twodo.TwoDoApp
 import app.twodo.data.ALL_CALENDARS
 import app.twodo.data.CrashLog
+import app.twodo.data.HOME
 import app.twodo.data.OTHER_LISTS
 import app.twodo.model.BLANK_LIST
 import app.twodo.model.calendarRef
@@ -245,11 +246,13 @@ fun TwoDoRoot(
         onNewGroup = { newGroup = true },
         onJoin = { joining = true },
         onSettings = { settings = true },
+        onHome = { show(HOME) },
     )
     val space = openSpaceId?.let { lists[it] }
+    val home = view == HOME
     val allCalendars = view == ALL_CALENDARS && calendars.size > 1
     val group = view?.let { lists[it] }?.takeIf { it.kind == SpaceKind.GROUP }
-        ?: if ((view == OTHER_LISTS && others.isNotEmpty()) || allCalendars) null else groups.firstOrNull()
+        ?: if (home || (view == OTHER_LISTS && others.isNotEmpty()) || allCalendars) null else groups.firstOrNull()
     // App-wide screens (Notifications) wear the app's theme, not the look of the group they were opened from.
     val look = rememberLook(app, if (notifications) null else space ?: group, appTheme)
     LaunchedEffect(look.theme.dark) { onScreenDark(look.theme.dark) }
@@ -257,6 +260,10 @@ fun TwoDoRoot(
     val myColor by app.myColor.collectAsStateWithLifecycle()
     val colors by app.sync.colors.collectAsStateWithLifecycle()
     val people = remember(myColor, colors) { People(app.identity.deviceId, myColor, colors) }
+    // Back from a group (or the other lists, or all calendars) goes home; back from home leaves the app.
+    // Before the screens, so their own back handling (e.g. closing history) comes first.
+    BackHandler(enabled = lists.isNotEmpty() && !home && space == null && !notifications) { show(HOME) }
+
     CompositionLocalProvider(LocalPeople provides people) {
     LookSurface(look) {
         when {
@@ -275,6 +282,7 @@ fun TwoDoRoot(
                     ListScreen(app, space, spaceStatus, snackbar, onBack = { openSpaceId = null })
                 }
             }
+            home -> HomeScreen(app, lists, others, status, snackbar, navigation)
             group != null -> GroupScreen(app, group, lists, status, snackbar, navigation, onOpenSpace = { openSpaceId = it })
             allCalendars -> AllCalendarsScreen(app, calendars, navigation)
             else -> ListsScreen(app, others, status, snackbar, appTheme, navigation, onOpen = { openSpaceId = it })

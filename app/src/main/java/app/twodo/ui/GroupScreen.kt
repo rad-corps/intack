@@ -33,6 +33,7 @@ import androidx.compose.material.icons.outlined.Checklist
 import androidx.compose.material.icons.outlined.DriveFileMove
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Groups
+import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Settings
@@ -106,6 +107,7 @@ class GroupNavigation(
     val onNewGroup: () -> Unit,
     val onJoin: () -> Unit,
     val onSettings: () -> Unit,
+    val onHome: () -> Unit,
 )
 
 /**
@@ -208,6 +210,8 @@ private fun GroupTopBar(group: TodoList, status: SyncStatus, navigation: GroupNa
 @Composable
 internal fun GroupSwitcher(expanded: Boolean, currentId: String?, navigation: GroupNavigation, onDismiss: () -> Unit) {
     DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
+        DropdownMenuItem(text = { Text("Home") }, leadingIcon = { Icon(Icons.Outlined.Home, null) }, onClick = { onDismiss(); navigation.onHome() })
+        HorizontalDivider()
         navigation.groups.forEach { g ->
             DropdownMenuItem(
                 text = { Text(g.name) },

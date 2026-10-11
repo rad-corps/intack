@@ -163,6 +163,9 @@ class Identity(context: Context) {
         set(value) = prefs.edit { putBoolean("backgroundSync", value) }
 }
 
+/** [Identity.lastView] for the app's home: every group, and ways to start or join one. */
+const val HOME = "home"
+
 /** [Identity.lastView] for the lists and diaries that aren't in a group. */
 const val OTHER_LISTS = "other"
 
