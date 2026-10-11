@@ -5,6 +5,8 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+## v0.6.15 — 2026-10-11
+
 **Battery diagnostics.** A new switch, Settings › Diagnostics, shows a small readout of how hard the
 app is working on top of every screen. Tap it to see where the battery goes: processor time by part of
 the app, on screen versus in the background, a per-minute history for the last hour, network use, and
