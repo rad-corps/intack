@@ -5,6 +5,8 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+## v0.6.20 — 2026-10-11
+
 **A home screen.** Pressing back in a group no longer drops you out of the app: it goes to a new home
 screen showing all your groups (with what's on today, what's left to do and who's in each), your other
 lists, all calendars, starting or joining a group, and settings. Back from there leaves the app as
