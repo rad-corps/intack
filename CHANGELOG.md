@@ -5,6 +5,8 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+## v0.6.17 — 2026-10-11
+
 **Archive finished lists.** Every list you have open keeps in touch with the others' phones, which uses
 battery. Now, when everything on a list is ticked, the app offers to archive it, and any list can be
 archived from its ⋮ menu. Archived lists stop syncing and wait under "Archived" at the bottom of the
