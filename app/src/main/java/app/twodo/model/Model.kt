@@ -107,6 +107,8 @@ data class TodoList(
     val archiveOfferDeclinedAt: Long = 0,
     /** Local only: this phone's look for a list outside any group (null: [themeId] and the app's background). */
     val look: Look? = null,
+    /** Local only: show the items without their headings on this phone. */
+    val hideHeadings: Boolean = false,
 ) {
     val visibleItems: List<Item>
         get() = items.values.filter { !it.deleted }.sortedWith(compareBy({ it.position }, { it.id }))

@@ -5,6 +5,14 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+**Ready-made lists.** A new list can start from Groceries (with headings Fresh, Bakery, Fridge, Freezer,
+Pantry, Household), To do, Packing, Meal plan or Blank. A new group's shopping list starts as Groceries.
+Headings are like any others: tap one to rename or remove it, and add your own from the ⋮ menu. If you'd
+rather not see them, ⋮ › Hide headings hides them on your phone only.
+
+**New items go to the top in lists with headings,** above the first heading, ready to drag or move
+into a section, instead of landing in the last section.
+
 ## v0.6.18 — 2026-10-11
 
 **Backgrounds.** Choose from 17 built-in backgrounds: corkboard, notepaper and linen, the sea, forest,

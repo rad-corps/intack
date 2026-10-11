@@ -37,4 +37,29 @@ class SectionsTest {
         assertEquals("added the heading Dairy", describeChange(null, dairy))
         assertEquals("renamed the heading Dairy to Milk & eggs", describeChange(dairy, dairy.copy(text = "Milk & eggs")))
     }
+
+    private fun at(id: String, pos: Double, heading: Boolean = false) =
+        Item(id, id, createdAt = 0, version = Version(1, "A"), editor = "A", heading = heading, pos = pos)
+
+    @Test
+    fun newItemsGoAboveTheFirstHeading() {
+        val list = listOf(at("bread", 1.0), at("dairy", 2.0, true), at("milk", 3.0))
+        assertEquals(1.5, newItemPosition(list), 0.0)
+        // Nothing above the headings yet (a list made from a template).
+        assertEquals(1.0, newItemPosition(listOf(at("fresh", 2.0, true), at("bakery", 3.0, true))), 0.0)
+        // No headings: at the bottom.
+        assertEquals(4.0, newItemPosition(listOf(at("a", 1.0), at("b", 3.0))), 0.0)
+        assertEquals(1.0, newItemPosition(emptyList()), 0.0)
+    }
+
+    @Test
+    fun dropsWithHeadingsHiddenLandNextToTheSameItems() {
+        val shown = ordered.filter { !it.heading } // bread milk cheese apples
+        // Apples dragged to the top (index 0, before bread): before bread among the others.
+        assertEquals(0, indexAmongAll(ordered, listOf(item("apples")) + shown.dropLast(1), "apples", 0))
+        // Bread dropped after cheese: right after cheese, still in Dairy.
+        assertEquals(3, indexAmongAll(ordered, listOf(item("milk"), item("cheese"), item("bread"), item("apples")), "bread", 2))
+        // Milk dropped last: after apples.
+        assertEquals(5, indexAmongAll(ordered, listOf(item("bread"), item("cheese"), item("apples"), item("milk")), "milk", 3))
+    }
 }

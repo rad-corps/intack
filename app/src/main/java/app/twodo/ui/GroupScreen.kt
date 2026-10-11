@@ -52,6 +52,7 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -77,6 +78,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.twodo.TwoDoApp
 import app.twodo.data.ALL_CALENDARS
+import app.twodo.model.BLANK_LIST
 import app.twodo.model.SpaceKind
 import app.twodo.model.TodoList
 import app.twodo.model.calendarRef
@@ -288,16 +290,31 @@ private fun ListsTab(app: TwoDoApp, group: TodoList, lists: Map<String, TodoList
         }
     }
     if (creating) {
-        TextPromptDialog(
-            title = "New list",
-            label = "Name",
-            confirm = "Create",
-            supporting = "Everyone in ${group.name} will have it. For example: To do, Holiday packing, Meal ideas.",
-            onDismiss = { creating = false },
-        ) { name ->
-            creating = false
-            scope.launch { app.repo.addToGroup(group.id, name)?.let { onOpenSpace(it.id) } }
-        }
+        var name by remember { mutableStateOf("") }
+        var template by remember { mutableStateOf(BLANK_LIST) }
+        AlertDialog(
+            onDismissRequest = { creating = false },
+            title = { Text("New list") },
+            text = {
+                Column {
+                    Text("Everyone in ${group.name} will have it.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.height(12.dp))
+                    TemplateChoice(template) { picked ->
+                        if (name.isBlank() || name == template.name) name = picked.name
+                        template = picked
+                    }
+                    Spacer(Modifier.height(16.dp))
+                    OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Name") }, singleLine = true)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    creating = false
+                    scope.launch { app.repo.addToGroup(group.id, name, template = template)?.let { onOpenSpace(it.id) } }
+                }, enabled = name.isNotBlank()) { Text("Create") }
+            },
+            dismissButton = { TextButton(onClick = { creating = false }) { Text("Cancel") } },
+        )
     }
     if (moving) {
         AlertDialog(

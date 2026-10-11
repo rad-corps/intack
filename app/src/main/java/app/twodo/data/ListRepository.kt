@@ -2,7 +2,9 @@ package app.twodo.data
 
 import android.util.Log
 import app.twodo.model.AuditEntry
+import app.twodo.model.BLANK_LIST
 import app.twodo.model.Conflict
+import app.twodo.model.GROCERIES
 import app.twodo.model.GROUP_LOOK_ITEM
 import app.twodo.model.GROUP_NAME_ITEM
 import app.twodo.model.statusItem
@@ -21,6 +23,7 @@ import app.twodo.model.toJson
 import app.twodo.model.Invite
 import app.twodo.model.Item
 import app.twodo.model.ListKeys
+import app.twodo.model.ListTemplate
 import app.twodo.model.SpaceKind
 import app.twodo.model.TodoList
 import app.twodo.model.Version
@@ -29,6 +32,7 @@ import app.twodo.model.edited
 import app.twodo.model.merge
 import app.twodo.model.mergeAudit
 import app.twodo.model.moved
+import app.twodo.model.newItemPosition
 import app.twodo.model.planGroup
 import app.twodo.model.syncedGroupName
 import kotlinx.coroutines.CoroutineScope
@@ -83,9 +87,10 @@ class ListRepository(private val dir: File, private val identity: Identity) {
     private val _conflicts = MutableSharedFlow<Conflict>(extraBufferCapacity = 64)
     val conflicts: SharedFlow<Conflict> = _conflicts
 
-    suspend fun createList(name: String, kind: SpaceKind = SpaceKind.LIST): TodoList = mutex.withLock { newSpace(name, kind) }
+    suspend fun createList(name: String, kind: SpaceKind = SpaceKind.LIST, template: ListTemplate = BLANK_LIST): TodoList =
+        mutex.withLock { newSpace(name, kind, template = template) }
 
-    private suspend fun newSpace(name: String, kind: SpaceKind, groupId: String? = null): TodoList {
+    private suspend fun newSpace(name: String, kind: SpaceKind, groupId: String? = null, template: ListTemplate = BLANK_LIST): TodoList {
         val fallback = when (kind) {
             SpaceKind.DIARY -> "Calendar"
             SpaceKind.GROUP -> "Family"
@@ -95,8 +100,20 @@ class ListRepository(private val dir: File, private val identity: Identity) {
             UUID.randomUUID().toString(), name.trim().ifEmpty { fallback }, ListKeys.newSecret(),
             createdHere = true, kind = kind, groupId = groupId, addedAt = System.currentTimeMillis(),
         ).let { if (kind == SpaceKind.DIARY) it.copy(items = birthEntry(it).let { e -> mapOf(e.id to e) }) else it }
+            .let { if (kind == SpaceKind.LIST) it.copy(items = templateHeadings(template).associateBy { h -> h.id }) else it }
         save(list)
         return list
+    }
+
+    /** A new list's headings from its template, in order. */
+    private fun templateHeadings(template: ListTemplate): List<Item> {
+        val now = System.currentTimeMillis()
+        return template.headings.mapIndexed { i, text ->
+            Item(
+                id = UUID.randomUUID().toString(), text = text, createdAt = now, version = Version(now, identity.deviceId),
+                editor = identity.deviceName, pos = i + 1.0, posVersion = Version(now, identity.deviceId), heading = true,
+            )
+        }
     }
 
     /** A new calendar's first entry: when it was made ("Calendar created", today, at the time). */
@@ -130,16 +147,17 @@ class ListRepository(private val dir: File, private val identity: Identity) {
             save(list.copy(groupId = group.id))
             putGroupItem(group.id, spaceItem(list))
         }
-        if (existing.none { it.kind == SpaceKind.LIST }) putGroupItem(group.id, spaceItem(newSpace("Shopping", SpaceKind.LIST, group.id)))
+        if (existing.none { it.kind == SpaceKind.LIST }) putGroupItem(group.id, spaceItem(newSpace("Shopping", SpaceKind.LIST, group.id, GROCERIES)))
         _lists.value.getValue(group.id)
     }
 
     /** Adds a new list to the group, for everyone in it. */
-    suspend fun addToGroup(groupId: String, name: String, kind: SpaceKind = SpaceKind.LIST): TodoList? = withContext(NonCancellable) { addToGroupLocked(groupId, name, kind) }
+    suspend fun addToGroup(groupId: String, name: String, kind: SpaceKind = SpaceKind.LIST, template: ListTemplate = BLANK_LIST): TodoList? =
+        withContext(NonCancellable) { addToGroupLocked(groupId, name, kind, template) }
 
-    private suspend fun addToGroupLocked(groupId: String, name: String, kind: SpaceKind): TodoList? = mutex.withLock {
+    private suspend fun addToGroupLocked(groupId: String, name: String, kind: SpaceKind, template: ListTemplate): TodoList? = mutex.withLock {
         if (_lists.value[groupId]?.kind != SpaceKind.GROUP) return null
-        val space = newSpace(name, kind, groupId)
+        val space = newSpace(name, kind, groupId, template)
         putGroupItem(groupId, spaceItem(space))
         space
     }
@@ -329,6 +347,12 @@ class ListRepository(private val dir: File, private val identity: Identity) {
             ?: TodoList(invite.listId, invite.name, invite.secret, kind = invite.kind, addedAt = System.currentTimeMillis()).also { save(it) }
     }
 
+    /** Shows or hides the list's headings on this phone. */
+    suspend fun setHideHeadings(listId: String, hide: Boolean): Unit = mutex.withLock {
+        val list = _lists.value[listId] ?: return
+        save(list.copy(hideHeadings = hide))
+    }
+
     /** Archives the list on this phone (it stops syncing) and asks the others whether to do the same. */
     suspend fun archive(listId: String): Unit = withContext(NonCancellable) {
         mutex.withLock {
@@ -394,7 +418,7 @@ class ListRepository(private val dir: File, private val identity: Identity) {
                 createdAt = now,
                 version = Version(now, identity.deviceId),
                 editor = identity.deviceName,
-                pos = (list.visibleItems.maxOfOrNull { it.position } ?: 0.0) + 1,
+                pos = if (heading) (list.visibleItems.maxOfOrNull { it.position } ?: 0.0) + 1 else newItemPosition(list.visibleItems),
                 posVersion = Version(now, identity.deviceId),
                 heading = heading,
             )

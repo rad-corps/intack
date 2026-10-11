@@ -32,6 +32,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -73,6 +75,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -121,11 +124,14 @@ import app.twodo.TwoDoApp
 import app.twodo.data.ALL_CALENDARS
 import app.twodo.data.CrashLog
 import app.twodo.data.OTHER_LISTS
+import app.twodo.model.BLANK_LIST
 import app.twodo.model.calendarRef
 import app.twodo.model.sharedLook
 import app.twodo.net.SyncLog
 import app.twodo.model.Invite
 import app.twodo.model.Item
+import app.twodo.model.LIST_TEMPLATES
+import app.twodo.model.ListTemplate
 import app.twodo.model.STATUS_DELETED
 import app.twodo.model.ShareLink
 import app.twodo.model.SpaceKind
@@ -137,6 +143,7 @@ import app.twodo.sync.ListEvent
 import app.twodo.sync.Notifications
 import app.twodo.sync.SyncStatus
 import app.twodo.model.describe
+import app.twodo.model.indexAmongAll
 import app.twodo.model.offerArchive
 import app.twodo.model.pendingStatusRequest
 import com.google.zxing.BarcodeFormat
@@ -426,9 +433,9 @@ private fun ListsScreen(
     }
 
     if (creating) {
-        NewSpaceDialog(onDismiss = { creating = false }) { name, kind ->
+        NewSpaceDialog(onDismiss = { creating = false }) { name, kind, template ->
             creating = false
-            scope.launch { onOpen(app.repo.createList(name, kind).id) }
+            scope.launch { onOpen(app.repo.createList(name, kind, template).id) }
         }
     }
 }
@@ -585,13 +592,16 @@ internal fun ListBody(app: TwoDoApp, list: TodoList, status: SyncStatus, modifie
         JoiningBanner(list, status)
         ArchiveBanner(app, list)
         // Local copy so dragging is smooth; committed to the repository when the drag ends.
-        var ordered by remember(list.visibleItems) { mutableStateOf(list.visibleItems) }
+        val shown = if (list.hideHeadings) list.visibleItems.filter { !it.heading } else list.visibleItems
+        var ordered by remember(shown) { mutableStateOf(shown) }
         val listState = rememberLazyListState()
         val reorderState = rememberReorderableLazyListState(listState) { from, to ->
             ordered = ordered.toMutableList().apply { add(to.index, removeAt(from.index)) }
         }
         LaunchedEffect(ordered.size) {
-            if (scrollToNew && ordered.isNotEmpty()) listState.animateScrollToItem(ordered.size - 1)
+            // New items go above the headings, if there are any: scroll to the newest.
+            val newest = ordered.withIndex().filter { !it.value.heading }.maxByOrNull { it.value.createdAt }?.index
+            if (scrollToNew && newest != null) listState.animateScrollToItem(newest)
             scrollToNew = false
         }
         LazyColumn(Modifier.weight(1f), state = listState, contentPadding = PaddingValues(bottom = 8.dp)) {
@@ -604,7 +614,8 @@ internal fun ListBody(app: TwoDoApp, list: TodoList, status: SyncStatus, modifie
                     )
                     val dragHandle = Modifier.draggableHandle(onDragStopped = {
                         val index = ordered.indexOfFirst { it.id == item.id }
-                        scope.launch { app.repo.moveItem(list.id, item.id, index) }
+                        val target = if (list.hideHeadings) indexAmongAll(list.visibleItems, ordered, item.id, index) else index
+                        scope.launch { app.repo.moveItem(list.id, item.id, target) }
                     })
                     if (item.heading) {
                         // A section heading: bold, no checkbox; tap to rename or delete.
@@ -750,6 +761,12 @@ internal fun SpaceTopBar(app: TwoDoApp, list: TodoList, status: SyncStatus, onBa
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                 if (list.kind == SpaceKind.LIST) {
                     DropdownMenuItem(text = { Text("Add a heading") }, onClick = { menu = false; addingHeading = true })
+                    if (list.headings.isNotEmpty()) {
+                        DropdownMenuItem(
+                            text = { Text(if (list.hideHeadings) "Show headings" else "Hide headings") },
+                            onClick = { menu = false; app.save { app.repo.setHideHeadings(list.id, !list.hideHeadings) } },
+                        )
+                    }
                 }
                 DropdownMenuItem(text = { Text("History") }, onClick = { menu = false; onHistory() })
                 if (list.kind == SpaceKind.LIST && !list.archived) {
@@ -1255,9 +1272,10 @@ private fun TodoList.summary(): String = if (isJoining) "Joining…" else if (ar
 
 /** Name plus a List / Diary choice. */
 @Composable
-private fun NewSpaceDialog(onDismiss: () -> Unit, onCreate: (String, SpaceKind) -> Unit) {
+private fun NewSpaceDialog(onDismiss: () -> Unit, onCreate: (String, SpaceKind, ListTemplate) -> Unit) {
     var name by remember { mutableStateOf("") }
     var kind by remember { mutableStateOf(SpaceKind.LIST) }
+    var template by remember { mutableStateOf(BLANK_LIST) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (kind == SpaceKind.DIARY) "New diary" else "New list") },
@@ -1273,11 +1291,19 @@ private fun NewSpaceDialog(onDismiss: () -> Unit, onCreate: (String, SpaceKind) 
                         ) { Text(option.label) }
                     }
                 }
+                if (kind == SpaceKind.LIST) {
+                    Spacer(Modifier.height(12.dp))
+                    TemplateChoice(template) { picked ->
+                        // Suggest its name, unless the user has typed one of their own.
+                        if (name.isBlank() || name == template.name) name = picked.name
+                        template = picked
+                    }
+                }
                 Spacer(Modifier.height(16.dp))
                 OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Name") }, singleLine = true)
             }
         },
-        confirmButton = { TextButton(onClick = { onCreate(name, kind) }, enabled = name.isNotBlank()) { Text("Create") } },
+        confirmButton = { TextButton(onClick = { onCreate(name, kind, if (kind == SpaceKind.LIST) template else BLANK_LIST) }, enabled = name.isNotBlank()) { Text("Create") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
 }
@@ -1453,4 +1479,23 @@ private fun StatusRequestDialog(app: TwoDoApp, lists: Map<String, TodoList>) {
             }
         },
     )
+}
+
+/** "Start from": a blank list, or one with headings ready (Groceries: Fresh, Bakery, Fridge…). */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun TemplateChoice(selected: ListTemplate, onSelect: (ListTemplate) -> Unit) {
+    Text("Start from", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        LIST_TEMPLATES.forEach { template ->
+            FilterChip(selected = template == selected, onClick = { onSelect(template) }, label = { Text(template.label) })
+        }
+    }
+    if (selected.headings.isNotEmpty()) {
+        Text(
+            "Headings: ${selected.headings.joinToString(", ")}. Rename or remove them by tapping, or hide them from the ⋮ menu.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
 }
