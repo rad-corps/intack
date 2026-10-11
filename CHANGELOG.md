@@ -5,6 +5,8 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+## v0.6.19 — 2026-10-11
+
 **Ready-made lists.** A new list can start from Groceries (with headings Fresh, Bakery, Fridge, Freezer,
 Pantry, Household), To do, Packing, Meal plan or Blank. A new group's shopping list starts as Groceries.
 Headings are like any others: tap one to rename or remove it, and add your own from the ⋮ menu. If you'd
