@@ -5,6 +5,16 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+**Archive finished lists.** Every list you have open keeps in touch with the others' phones, which uses
+battery. Now, when everything on a list is ticked, the app offers to archive it, and any list can be
+archived from its ⋮ menu. Archived lists stop syncing and wait under "Archived" at the bottom of the
+screen; open one and tap Bring back to start syncing it again.
+
+**Everyone's asked when a list is archived or deleted.** If someone archives or deletes a list you
+share, your phone asks whether to archive it, delete it, or keep it (keeping it means it carries on
+syncing, using some battery). Deleting a list outside a group now asks the others too; to just put it
+out of the way, archive it instead.
+
 ## v0.6.16 — 2026-10-11
 
 **Much less battery and data use.** Thanks to the new diagnostics, we found the app kept setting up

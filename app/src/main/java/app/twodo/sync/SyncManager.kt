@@ -163,7 +163,7 @@ class SyncManager(context: Context, private val repo: ListRepository, private va
         }
         scope.launch {
             repo.localEdits.collect { edit ->
-                publishToRelays(edit.listId, SyncMessage.Items(listOf(edit.item), audit = listOfNotNull(edit.audit)))
+                publishToRelays(edit.listId, SyncMessage.Items(listOf(edit.item), audit = listOfNotNull(edit.audit)), secret = edit.secret)
                 val swarm = swarms[edit.listId] ?: return@collect
                 swarm.openPeers.forEach { sendItems(swarm, it, listOf(edit.item), listOfNotNull(edit.audit)) }
             }
@@ -220,7 +220,8 @@ class SyncManager(context: Context, private val repo: ListRepository, private va
     /** Runs one swarm (direct connections) and one relay subscription per list while in use; none otherwise. */
     private suspend fun reconcile() {
         Diagnostics.count("Sync: reconciles")
-        val wanted = if (users > 0) repo.lists.value else emptyMap()
+        // Archived lists don't sync: that's the point of archiving them.
+        val wanted = if (users > 0) repo.lists.value.filterValues { !it.archived } else emptyMap()
         val direct = if (identity.directConnections) wanted else emptyMap()
         (swarms.keys - direct.keys).forEach { id -> swarms.remove(id)?.stop() }
         (relayLists.keys - wanted.keys).forEach { id -> relayLists.remove(id)?.let { relays?.unsubscribe(it.subscriptionId) } }
@@ -405,13 +406,18 @@ class SyncManager(context: Context, private val repo: ListRepository, private va
      * phones that are offline when they come back; [live] ones (hello, full-list replies) only matter to
      * phones online right now.
      */
-    private fun publishToRelays(listId: String, message: SyncMessage, live: Boolean = false) {
-        val relayList = relayLists[listId] ?: return
+    /**
+     * Sends [message] for the list through the relays. With [secret], it goes even if the list has just
+     * stopped syncing here (archived or deleted), so the others hear about that.
+     */
+    private fun publishToRelays(listId: String, message: SyncMessage, live: Boolean = false, secret: String? = null) {
         val relays = relays ?: return
-        val content = keys[listId]?.encryptCompressed(json.encodeToString(SyncMessage.serializer(), message)) ?: return
+        val nostr = relayLists[listId]?.nostr ?: secret?.let { NostrIdentity(it) } ?: return
+        val listKeys = keys[listId] ?: secret?.let { ListKeys(it) } ?: return
+        val content = listKeys.encryptCompressed(json.encodeToString(SyncMessage.serializer(), message))
         val expiry = System.currentTimeMillis() / 1000 + RELAY_EXPIRY_DAYS * 86_400L
         val kind = if (live) TWODO_LIVE_KIND else TWODO_KIND
-        relays.publish(relayList.nostr.sign(kind, listOf(listOf("expiration", expiry.toString())), content))
+        relays.publish(nostr.sign(kind, listOf(listOf("expiration", expiry.toString())), content))
     }
 
     override suspend fun onPeerOpen(swarm: ListSwarm, peer: Peer) {
@@ -502,8 +508,10 @@ class SyncManager(context: Context, private val repo: ListRepository, private va
      * Tells the others this device is leaving the list, then removes it from this device. Runs in the
      * manager's own scope so it completes even if the screen that asked for it goes away.
      */
-    fun leave(listId: String) {
+    fun leave(listId: String, deleting: Boolean = false) {
         scope.launch {
+            // Deleting: the others are asked whether to delete their copies too.
+            if (deleting) repo.markDeleted(listId)
             // Leaving a group leaves everything in it.
             val ids = repo.lists.value.values.filter { it.groupId == listId }.map { it.id } + listId
             for (id in ids) {

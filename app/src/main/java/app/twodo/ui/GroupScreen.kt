@@ -242,10 +242,13 @@ private fun ListsTab(app: TwoDoApp, group: TodoList, lists: Map<String, TodoList
     val scope = rememberCoroutineScope()
     var creating by remember { mutableStateOf(false) }
     var moving by remember { mutableStateOf(false) }
+    var showArchived by rememberSaveable { mutableStateOf(false) }
     val others = lists.values.filter { it.groupId == null && it.kind == SpaceKind.LIST }.sortedBy { it.name.lowercase() }
     Column(Modifier.fillMaxSize()) {
         LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            items(group.listRefs, key = { it.id }) { ref ->
+            val (archived, active) = group.listRefs.partition { ref -> ref.spaceId?.let { lists[it] }?.archived == true }
+            items(active + if (showArchived) archived else emptyList(), key = { it.id }) { ref ->
+                if (ref === archived.firstOrNull()) ArchivedHeader(archived.size, expanded = true) { showArchived = false }
                 val list = ref.spaceId?.let { lists[it] }
                 Card(
                     onClick = { list?.let { onOpenSpace(it.id) } },
@@ -270,6 +273,7 @@ private fun ListsTab(app: TwoDoApp, group: TodoList, lists: Map<String, TodoList
                     }
                 }
             }
+            if (archived.isNotEmpty() && !showArchived) item { ArchivedHeader(archived.size, expanded = false) { showArchived = true } }
         }
         // At the bottom, within thumb reach, like the add bars in lists and the calendar.
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -324,6 +328,7 @@ private fun ListsTab(app: TwoDoApp, group: TodoList, lists: Map<String, TodoList
 
 private fun toDoSummary(list: TodoList): String {
     if (list.isJoining) return "Getting it…"
+    if (list.archived) return "Archived · not syncing"
     val left = list.visibleItems.count { !it.checked && !it.heading }
     return when (left) {
         0 -> "All done"

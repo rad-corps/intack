@@ -5,6 +5,10 @@ import app.twodo.model.AuditEntry
 import app.twodo.model.Conflict
 import app.twodo.model.GROUP_LOOK_ITEM
 import app.twodo.model.GROUP_NAME_ITEM
+import app.twodo.model.statusItem
+import app.twodo.model.STATUS_DELETED
+import app.twodo.model.STATUS_ARCHIVED
+import app.twodo.model.LIST_STATUS_ITEM
 import app.twodo.model.Look
 import app.twodo.model.indexForSection
 import app.twodo.model.isPhotoPart
@@ -48,7 +52,8 @@ import java.util.Base64
 import java.util.UUID
 
 /** A local edit that needs to be sent to peers, with its audit entry if it's worth recording. */
-data class LocalEdit(val listId: String, val item: Item, val audit: AuditEntry?)
+/** [secret] lets the edit still go out if the list was archived or deleted straight after. */
+data class LocalEdit(val listId: String, val item: Item, val audit: AuditEntry?, val secret: String)
 
 /** Result of applying a peer's data: items that changed (with their previous state) and new audit entries. */
 data class RemoteResult(val changes: List<Pair<Item?, Item>>, val newAudit: List<AuditEntry>)
@@ -87,7 +92,7 @@ class ListRepository(private val dir: File, private val identity: Identity) {
         }
         val list = TodoList(
             UUID.randomUUID().toString(), name.trim().ifEmpty { fallback }, ListKeys.newSecret(),
-            createdHere = true, kind = kind, groupId = groupId,
+            createdHere = true, kind = kind, groupId = groupId, addedAt = System.currentTimeMillis(),
         ).let { if (kind == SpaceKind.DIARY) it.copy(items = birthEntry(it).let { e -> mapOf(e.id to e) }) else it }
         save(list)
         return list
@@ -155,7 +160,14 @@ class ListRepository(private val dir: File, private val identity: Identity) {
         val list = _lists.value[listId] ?: return
         val groupId = list.groupId ?: return
         val ref = _lists.value[groupId]?.items?.values?.firstOrNull { it.spaceId == listId && !it.deleted }
-        if (ref != null) putGroupItem(groupId, ref.edited(identity.deviceId, identity.deviceName, System.currentTimeMillis()) { copy(deleted = true) })
+        if (ref != null) {
+            val deleted = ref.edited(identity.deviceId, identity.deviceName, System.currentTimeMillis()) { copy(deleted = true) }
+            putGroupItem(groupId, deleted)
+            // The same request in the list itself, with the same version, so each phone asks once.
+            if (list.kind == SpaceKind.LIST) {
+                putStatus(list, list.statusItem(STATUS_DELETED, identity.deviceId, identity.deviceName, deleted.version.ts)) { this }
+            }
+        }
         _lists.value -= listId
         fileMutex.withLock { withContext(Dispatchers.IO) { file(listId).delete() } }
     }
@@ -253,7 +265,7 @@ class ListRepository(private val dir: File, private val identity: Identity) {
     private suspend fun putGroupItem(groupId: String, item: Item) {
         val group = _lists.value[groupId] ?: return
         save(group.copy(items = group.items + (item.id to item)))
-        _localEdits.tryEmit(LocalEdit(groupId, item, null))
+        _localEdits.tryEmit(LocalEdit(groupId, item, null, group.secret))
     }
 
     /**
@@ -265,17 +277,75 @@ class ListRepository(private val dir: File, private val identity: Identity) {
         group.syncedGroupName?.let { if (it != group.name) save(group.copy(name = it)) }
         assemblePhoto(group)
         val plan = planGroup(group, _lists.value)
-        plan.join.forEach { save(TodoList(it.listId, it.name, it.secret, kind = it.kind, groupId = groupId)) }
+        plan.join.forEach { save(TodoList(it.listId, it.name, it.secret, kind = it.kind, groupId = groupId, addedAt = System.currentTimeMillis())) }
         plan.update.forEach { save(it) }
+        // Someone deleted a space from the group. Lists stay here, out of the group, and this phone is
+        // asked whether to delete its copy too (the deleter's phone sends the same request in the list
+        // itself; this covers it not having arrived yet, or an older app that doesn't send it).
         plan.remove.forEach { id ->
-            _lists.value -= id
-            fileMutex.withLock { withContext(Dispatchers.IO) { file(id).delete() } }
+            val local = _lists.value[id] ?: return@forEach
+            val ref = group.items.values.firstOrNull { it.spaceId == id && it.deleted }
+            if (local.kind == SpaceKind.LIST && ref != null) {
+                val status = local.items[LIST_STATUS_ITEM]
+                val request = if (status != null && status.version >= ref.version) status
+                else Item(LIST_STATUS_ITEM, STATUS_DELETED, deleted = true, createdAt = 0, version = ref.version, editor = ref.editor)
+                save(local.copy(groupId = null, items = local.items + (request.id to request)))
+            } else {
+                _lists.value -= id
+                fileMutex.withLock { withContext(Dispatchers.IO) { file(id).delete() } }
+            }
         }
     }
 
     /** Adds a shared list from an invite; returns the existing one if already joined. */
     suspend fun joinList(invite: Invite): TodoList = mutex.withLock {
-        _lists.value[invite.listId] ?: TodoList(invite.listId, invite.name, invite.secret, kind = invite.kind).also { save(it) }
+        _lists.value[invite.listId]
+            ?: TodoList(invite.listId, invite.name, invite.secret, kind = invite.kind, addedAt = System.currentTimeMillis()).also { save(it) }
+    }
+
+    /** Archives the list on this phone (it stops syncing) and asks the others whether to do the same. */
+    suspend fun archive(listId: String): Unit = withContext(NonCancellable) {
+        mutex.withLock {
+            val list = _lists.value[listId] ?: return@withLock
+            putStatus(list, list.statusItem(STATUS_ARCHIVED, identity.deviceId, identity.deviceName, System.currentTimeMillis())) { this }
+        }
+        delay(STOP_DELAY_MS) // let the news go out before the list stops syncing
+        mutex.withLock { _lists.value[listId]?.let { save(it.copy(archived = true)) } }
+    }
+
+    /** Brings an archived list back: it syncs again and catches up. */
+    suspend fun unarchive(listId: String): Unit = mutex.withLock {
+        val list = _lists.value[listId] ?: return
+        save(list.copy(archived = false))
+    }
+
+    /** Tells the others this phone is deleting the list, so they're asked whether to delete theirs. */
+    suspend fun markDeleted(listId: String): Unit = mutex.withLock {
+        val list = _lists.value[listId]?.takeIf { it.kind == SpaceKind.LIST } ?: return
+        putStatus(list, list.statusItem(STATUS_DELETED, identity.deviceId, identity.deviceName, System.currentTimeMillis())) { this }
+    }
+
+    /**
+     * This phone's answer to someone else archiving or deleting the list: archive it too, or keep it
+     * syncing. (Deleting it is [deleteFromGroup] or leaving it.)
+     */
+    suspend fun answerStatus(listId: String, archive: Boolean): Unit = mutex.withLock {
+        val list = _lists.value[listId] ?: return
+        save(list.copy(archived = archive || list.archived, statusAnswered = list.items[LIST_STATUS_ITEM]?.version))
+    }
+
+    /** "Not now" to archiving a finished list: asked again once something changes. */
+    suspend fun declineArchiveOffer(listId: String): Unit = mutex.withLock {
+        val list = _lists.value[listId] ?: return
+        save(list.copy(archiveOfferDeclinedAt = System.currentTimeMillis()))
+    }
+
+    /** Records this phone's status [item] in [list] (applying [also]) and sends it (caller holds [mutex]). */
+    private suspend fun putStatus(list: TodoList, item: Item, also: TodoList.() -> TodoList) {
+        val entry = auditEntryFor(list.items[item.id], item)
+        val audit = if (entry != null) list.audit + (entry.id to entry) else list.audit
+        save(list.copy(items = list.items + (item.id to item), audit = audit).also())
+        _localEdits.tryEmit(LocalEdit(list.id, item, entry, list.secret))
     }
 
     /** Removes the list from this device only; peers keep their copies. Leaving a group removes its spaces too. */
@@ -383,7 +453,8 @@ class ListRepository(private val dir: File, private val identity: Identity) {
             // Synced data can be re-fetched, so its writes are batched: a big sync arrives in many chunks.
             if (merged != list) saveSoon(merged)
             if (merged.kind == SpaceKind.GROUP && result.accepted.isNotEmpty()) followGroup(listId)
-            result.conflicts.forEach { _conflicts.tryEmit(it) }
+            // Two people archiving at once isn't a conflict worth mentioning.
+            result.conflicts.filter { it.winner.id != LIST_STATUS_ITEM }.forEach { _conflicts.tryEmit(it) }
             RemoteResult(result.accepted.map { list.items[it.id] to it }, newAudit)
         }
 
@@ -437,7 +508,7 @@ class ListRepository(private val dir: File, private val identity: Identity) {
         val entry = auditEntryFor(list.items[item.id], item)
         val audit = if (entry != null) list.audit + (entry.id to entry) else list.audit
         save(list.copy(items = list.items + (item.id to item), audit = audit))
-        _localEdits.tryEmit(LocalEdit(listId, item, entry))
+        _localEdits.tryEmit(LocalEdit(listId, item, entry, list.secret))
     }
 
     /** Updates the list and writes it to disk now (local edits). */
@@ -489,6 +560,8 @@ class ListRepository(private val dir: File, private val identity: Identity) {
 
     private companion object {
         const val SAVE_DELAY_MS = 300L
+        /** Time for a last message to go out before a list stops syncing. */
+        const val STOP_DELAY_MS = 1_000L
     }
 
     private fun load(): Map<String, TodoList> {

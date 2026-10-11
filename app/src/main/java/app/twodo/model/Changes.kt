@@ -24,6 +24,11 @@ private fun Item.whenText(): String {
 fun describeChange(before: Item?, after: Item): String? = when {
     // Photo pieces and settings in a group aren't news in themselves.
     after.isPhotoPart -> null
+    after.id == LIST_STATUS_ITEM -> when (after.text) {
+        STATUS_ARCHIVED -> "archived the list"
+        STATUS_DELETED -> "deleted the list"
+        else -> null
+    }
     after.id == GROUP_LOOK_ITEM -> if (after.deleted) null else "changed the group's look"
     after.heading -> when {
         after.deleted -> if (before == null || before.deleted) null else "removed the heading ${before.text}"

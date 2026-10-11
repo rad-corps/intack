@@ -97,6 +97,14 @@ data class TodoList(
     val audit: Map<String, AuditEntry> = emptyMap(),
     /** Local only: the group this space belongs to, if any. */
     val groupId: String? = null,
+    /** Local only: archived on this phone — kept, but not synced (see Archive.kt). */
+    val archived: Boolean = false,
+    /** Local only: the latest archive/delete request from someone else that this phone has answered. */
+    val statusAnswered: Version? = null,
+    /** Local only: when this phone got the list (0 for lists from before this was recorded). */
+    val addedAt: Long = 0,
+    /** Local only: when the user last said "not now" to archiving it with everything ticked. */
+    val archiveOfferDeclinedAt: Long = 0,
 ) {
     val visibleItems: List<Item>
         get() = items.values.filter { !it.deleted }.sortedWith(compareBy({ it.position }, { it.id }))

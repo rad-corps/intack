@@ -57,9 +57,12 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -123,6 +126,7 @@ import app.twodo.model.sharedLook
 import app.twodo.net.SyncLog
 import app.twodo.model.Invite
 import app.twodo.model.Item
+import app.twodo.model.STATUS_DELETED
 import app.twodo.model.ShareLink
 import app.twodo.model.SpaceKind
 import app.twodo.model.TodoList
@@ -133,6 +137,8 @@ import app.twodo.sync.ListEvent
 import app.twodo.sync.Notifications
 import app.twodo.sync.SyncStatus
 import app.twodo.model.describe
+import app.twodo.model.offerArchive
+import app.twodo.model.pendingStatusRequest
 import com.google.zxing.BarcodeFormat
 import com.journeyapps.barcodescanner.BarcodeEncoder
 import com.journeyapps.barcodescanner.ScanContract
@@ -305,6 +311,7 @@ fun TwoDoRoot(
             dismissButton = { TextButton(onClick = ::done) { Text("Not now") } },
         )
     }
+    StatusRequestDialog(app, lists)
     if (newGroup) {
         NewGroupDialog(others, onDismiss = { newGroup = false }) { name, calendarId, listIds ->
             newGroup = false
@@ -338,6 +345,7 @@ private fun ListsScreen(
     val scope = rememberCoroutineScope()
     var creating by remember { mutableStateOf(false) }
     var switching by remember { mutableStateOf(false) }
+    var showArchived by rememberSaveable { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -392,7 +400,9 @@ private fun ListsScreen(
         }
         LazyColumn(contentPadding = padding) {
             if (navigation.groups.isEmpty()) item { GroupsIntro(onStart = navigation.onNewGroup) }
-            items(lists, key = { it.id }) { list ->
+            val (archived, active) = lists.partition { it.archived }
+            items(active + if (showArchived) archived else emptyList(), key = { it.id }) { list ->
+                if (list === archived.firstOrNull()) ArchivedHeader(archived.size, expanded = true) { showArchived = false }
                 Row(
                     Modifier.fillMaxWidth().clickable { onOpen(list.id) }.padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -402,15 +412,16 @@ private fun ListsScreen(
                     Column(Modifier.weight(1f)) {
                         Text(list.name, style = MaterialTheme.typography.bodyLarge)
                         Text(
-                            "${list.summary()} · ${status[list.id].summary()}",
+                            if (list.archived) list.summary() else "${list.summary()} · ${status[list.id].summary()}",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                    SyncDot(status[list.id])
+                    if (!list.archived) SyncDot(status[list.id])
                 }
                 HorizontalDivider(Modifier.padding(start = 70.dp, end = 16.dp), color = MaterialTheme.colorScheme.outlineVariant)
             }
+            if (archived.isNotEmpty() && !showArchived) item { ArchivedHeader(archived.size, expanded = false) { showArchived = true } }
         }
     }
 
@@ -572,6 +583,7 @@ internal fun ListBody(app: TwoDoApp, list: TodoList, status: SyncStatus, modifie
 
     Column(modifier.fillMaxSize()) {
         JoiningBanner(list, status)
+        ArchiveBanner(app, list)
         // Local copy so dragging is smooth; committed to the repository when the drag ends.
         var ordered by remember(list.visibleItems) { mutableStateOf(list.visibleItems) }
         val listState = rememberLazyListState()
@@ -715,9 +727,15 @@ internal fun SpaceTopBar(app: TwoDoApp, list: TodoList, status: SyncStatus, onBa
                     Text(list.name, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleLarge)
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    SyncDot(status)
-                    Spacer(Modifier.width(6.dp))
-                    Text(status.summary(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (!list.archived) {
+                        SyncDot(status)
+                        Spacer(Modifier.width(6.dp))
+                    }
+                    Text(
+                        if (list.archived) "Archived · not syncing" else status.summary(),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
         },
@@ -734,6 +752,9 @@ internal fun SpaceTopBar(app: TwoDoApp, list: TodoList, status: SyncStatus, onBa
                     DropdownMenuItem(text = { Text("Add a heading") }, onClick = { menu = false; addingHeading = true })
                 }
                 DropdownMenuItem(text = { Text("History") }, onClick = { menu = false; onHistory() })
+                if (list.kind == SpaceKind.LIST && !list.archived) {
+                    DropdownMenuItem(text = { Text("Archive") }, onClick = { menu = false; onBack(); app.save { app.repo.archive(list.id) } })
+                }
                 if (inGroup) {
                     DropdownMenuItem(text = { Text("Rename") }, onClick = { menu = false; renaming = true })
                     if (list.kind == SpaceKind.LIST) {
@@ -741,7 +762,10 @@ internal fun SpaceTopBar(app: TwoDoApp, list: TodoList, status: SyncStatus, onBa
                     }
                 } else {
                     DropdownMenuItem(text = { Text("Theme") }, onClick = { menu = false; pickingTheme = true })
-                    DropdownMenuItem(text = { Text("Remove from this phone") }, onClick = { menu = false; confirmRemove = true })
+                    DropdownMenuItem(
+                        text = { Text(if (list.kind == SpaceKind.LIST) "Delete" else "Remove from this phone") },
+                        onClick = { menu = false; confirmRemove = true },
+                    )
                 }
             }
         },
@@ -779,7 +803,7 @@ internal fun SpaceTopBar(app: TwoDoApp, list: TodoList, status: SyncStatus, onBa
         AlertDialog(
             onDismissRequest = { confirmRemove = false },
             title = { Text("Delete “${list.name}”?") },
-            text = { Text("It's deleted for everyone in the group.") },
+            text = { Text(DELETE_EXPLAINED.format("everyone in the group")) },
             confirmButton = {
                 TextButton(onClick = {
                     confirmRemove = false
@@ -787,7 +811,35 @@ internal fun SpaceTopBar(app: TwoDoApp, list: TodoList, status: SyncStatus, onBa
                     app.save { app.repo.deleteFromGroup(list.id) }
                 }) { Text("Delete", color = MaterialTheme.colorScheme.error) }
             },
-            dismissButton = { TextButton(onClick = { confirmRemove = false }) { Text("Cancel") } },
+            dismissButton = {
+                Row {
+                    if (!list.archived) {
+                        TextButton(onClick = { confirmRemove = false; onBack(); app.save { app.repo.archive(list.id) } }) { Text("Archive instead") }
+                    }
+                    TextButton(onClick = { confirmRemove = false }) { Text("Cancel") }
+                }
+            },
+        )
+    } else if (confirmRemove && list.kind == SpaceKind.LIST) {
+        AlertDialog(
+            onDismissRequest = { confirmRemove = false },
+            title = { Text("Delete “${list.name}”?") },
+            text = { Text(DELETE_EXPLAINED.format("everyone you share it with")) },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmRemove = false
+                    onBack()
+                    app.sync.leave(list.id, deleting = true)
+                }) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                Row {
+                    if (!list.archived) {
+                        TextButton(onClick = { confirmRemove = false; onBack(); app.save { app.repo.archive(list.id) } }) { Text("Archive instead") }
+                    }
+                    TextButton(onClick = { confirmRemove = false }) { Text("Cancel") }
+                }
+            },
         )
     } else if (confirmRemove) {
         AlertDialog(
@@ -1205,7 +1257,7 @@ internal fun JoiningBanner(list: TodoList, status: SyncStatus) {
     }
 }
 
-private fun TodoList.summary(): String = if (isJoining) "Joining…" else when (kind) {
+private fun TodoList.summary(): String = if (isJoining) "Joining…" else if (archived) "Archived" else when (kind) {
     SpaceKind.DIARY -> {
         val today = java.time.LocalDate.now().toString()
         val count = items.values.count { !it.deleted && it.date == today }
@@ -1327,4 +1379,92 @@ internal fun joinNames(names: List<String>): String = when (names.size) {
     2 -> "${names[0]} and ${names[1]}"
     3 -> "${names[0]}, ${names[1]} and ${names[2]}"
     else -> "${names[0]}, ${names[1]} and ${names.size - 2} others"
+}
+
+private const val DELETE_EXPLAINED =
+    "It's deleted from this phone, and %s is asked whether to delete theirs too. " +
+        "To just get it out of the way, archive it instead: it stops syncing, which saves battery, and you can bring it back any time."
+
+/** "Archived (3)": opens or closes the archived lists below it. */
+@Composable
+internal fun ArchivedHeader(count: Int, expanded: Boolean, onToggle: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clickable(onClick = onToggle).padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(Icons.Outlined.Inventory2, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(12.dp))
+        Text("Archived ($count)", Modifier.weight(1f), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Icon(if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown, if (expanded) "Hide archived" else "Show archived", tint = MaterialTheme.colorScheme.outline)
+    }
+}
+
+/**
+ * At the top of a list: if it's archived, a way to bring it back; if everything in it is ticked, an
+ * offer to archive it, since every list that's open keeps connections going.
+ */
+@Composable
+private fun ArchiveBanner(app: TwoDoApp, list: TodoList) {
+    val (text, action, onAction) = when {
+        list.archived -> Triple(
+            "Archived on this phone, so it isn't syncing. Bring it back to see the others' changes and send yours.",
+            "Bring back",
+            { app.save { app.repo.unarchive(list.id) } },
+        )
+        list.offerArchive -> Triple(
+            "All done! Archive this list? It stops syncing, which saves battery, and you can bring it back any time.",
+            "Archive",
+            { app.save { app.repo.archive(list.id) } },
+        )
+        else -> return
+    }
+    Card(
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+    ) {
+        Column(Modifier.padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 4.dp)) {
+            Text(text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSecondaryContainer)
+            Row(Modifier.align(Alignment.End)) {
+                if (!list.archived) TextButton(onClick = { app.save { app.repo.declineArchiveOffer(list.id) } }) { Text("Not now") }
+                TextButton(onClick = onAction) { Text(action) }
+            }
+        }
+    }
+}
+
+/**
+ * Someone else archived or deleted a list this phone has: ask whether to do the same here. Keeping
+ * it is fine, but it keeps syncing in the background, which uses battery.
+ */
+@Composable
+private fun StatusRequestDialog(app: TwoDoApp, lists: Map<String, TodoList>) {
+    // Dismissed without an answer: asked again next time the app opens.
+    var later by remember { mutableStateOf(setOf<String>()) }
+    val (list, request) = lists.values.firstNotNullOfOrNull { list ->
+        list.pendingStatusRequest(app.identity.deviceId)?.takeIf { list.id !in later }?.let { list to it }
+    } ?: return
+    val names by app.sync.names.collectAsStateWithLifecycle()
+    val who = names[request.version.by] ?: request.editor
+    val deleted = request.text == STATUS_DELETED
+    fun done() { later = later + list.id }
+    AlertDialog(
+        onDismissRequest = ::done,
+        title = { Text("$who ${if (deleted) "deleted" else "archived"} “${list.name}”") },
+        text = {
+            Text(
+                "Do the same on this phone? Archived lists stop syncing, which saves battery, and you can bring them back any time. " +
+                    "If you keep it, it keeps syncing in the background, which uses some battery.",
+            )
+        },
+        confirmButton = {
+            Row {
+                TextButton(onClick = { done(); app.save { app.repo.answerStatus(list.id, archive = false) } }) { Text("Keep") }
+                TextButton(onClick = {
+                    done()
+                    if (list.groupId != null) app.save { app.repo.deleteFromGroup(list.id) } else app.sync.leave(list.id)
+                }) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+                TextButton(onClick = { done(); app.save { app.repo.answerStatus(list.id, archive = true) } }) { Text("Archive") }
+            }
+        },
+    )
 }
