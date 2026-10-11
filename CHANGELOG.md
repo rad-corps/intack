@@ -5,6 +5,8 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+## v0.6.21 — 2026-10-12
+
 **What's on, right on the home screen.** Home now opens with today's schedule from all your calendars.
 On a quiet day it also shows the next few days. Tap an entry to open its calendar.
 
