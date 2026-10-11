@@ -43,12 +43,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.twodo.TwoDoApp
 import app.twodo.model.Item
 import app.twodo.model.TodoList
 import app.twodo.model.formatDay
+import app.twodo.model.sharedLook
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -57,7 +59,35 @@ import java.util.Locale
 /** A calendar shown in a schedule: entries from [list], labelled [label] in [color] when several are mixed. */
 class ScheduleSource(val list: TodoList, val label: String, val color: Color)
 
-private class ScheduleEntry(val item: Item, val source: ScheduleSource)
+internal class ScheduleEntry(val item: Item, val source: ScheduleSource)
+
+/** Each calendar with its group's name and colour (the group's accent, or one derived from its id). */
+internal fun calendarSources(calendars: List<Pair<TodoList, TodoList?>>): List<ScheduleSource> = calendars.map { (calendar, group) ->
+    val color = group?.sharedLook?.accent ?: ACCENTS[Math.floorMod((group ?: calendar).id.hashCode(), ACCENTS.size)]
+    ScheduleSource(calendar, group?.name ?: calendar.name, Color(color))
+}
+
+/** One day's entries in order: all-day ones first, then by time. */
+private fun List<ScheduleEntry>.inDayOrder() = sortedWith(compareBy({ it.item.time ?: "" }, { it.item.createdAt }, { it.item.id }))
+
+/**
+ * What's coming up, for the home screen: all of today, then following days until there are at least
+ * [enough] entries, looking at most [maxDays] ahead. Days with nothing on are left out.
+ */
+internal fun upcoming(sources: List<ScheduleSource>, today: LocalDate, enough: Int = 5, maxDays: Long = 14): List<Pair<LocalDate, List<ScheduleEntry>>> {
+    val byDay = sources.flatMap { source -> source.list.items.values.filter { !it.deleted && it.date != null }.map { ScheduleEntry(it, source) } }
+        .groupBy { it.item.localDate }
+    val days = mutableListOf<Pair<LocalDate, List<ScheduleEntry>>>()
+    var total = 0
+    for (offset in 0..maxDays) {
+        if (offset > 0 && total >= enough) break
+        val date = today.plusDays(offset)
+        val entries = byDay[date] ?: continue
+        days += date to entries.inDayOrder()
+        total += entries.size
+    }
+    return days
+}
 
 private val scheduleDay = DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.ENGLISH)
 private val scheduleDayWithYear = DateTimeFormatter.ofPattern("EEEE d MMMM yyyy", Locale.ENGLISH)
@@ -86,7 +116,7 @@ internal fun ScheduleView(app: TwoDoApp, sources: List<ScheduleSource>, modifier
             .filter { e -> e.item.localDate?.let { showPast || !it.isBefore(today) } == true }
             .groupBy { it.item.localDate!! }
             .toSortedMap()
-            .mapValues { (_, entries) -> entries.sortedWith(compareBy({ it.item.time ?: "" }, { it.item.createdAt }, { it.item.id })) }
+            .mapValues { (_, entries) -> entries.inDayOrder() }
     }
     val hasPast = remember(sources.map { it.list.items }, today) {
         sources.any { s -> s.list.items.values.any { !it.deleted && it.localDate?.isBefore(today) == true } }
@@ -170,6 +200,51 @@ internal fun ScheduleView(app: TwoDoApp, sources: List<ScheduleSource>, modifier
         NewEntrySheet(sources, onDismiss = { adding = false }) { source, text, date, time ->
             adding = false
             scope.launch { app.repo.addEntry(source.list.id, date, text, time) }
+        }
+    }
+}
+
+/**
+ * A short look ahead for the home screen (see [upcoming]): each entry with its time and calendar.
+ * Tapping one opens its calendar.
+ */
+@Composable
+internal fun UpcomingSchedule(sources: List<ScheduleSource>, onOpen: (String) -> Unit) {
+    val context = LocalContext.current
+    val is24Hour = remember { DateFormat.is24HourFormat(context) }
+    val today = LocalDate.now()
+    val days = remember(sources.map { it.list.items }, today) { upcoming(sources, today) }
+    val mixed = sources.size > 1
+    Column {
+        if (days.none { it.first == today }) {
+            Text(
+                "Nothing on today." + if (days.isEmpty()) " Nothing in the next two weeks either." else "",
+                Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        days.forEach { (date, entries) ->
+            if (date != today || days.size > 1) DayHeading(date, today, null)
+            entries.forEach { entry ->
+                Row(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).clickable { onOpen(entry.source.list.id) }
+                        .padding(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        entry.item.time?.let { displayTime(is24Hour, it) } ?: "All day",
+                        Modifier.width(72.dp),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = if (entry.item.time != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                    )
+                    if (mixed) Box(Modifier.padding(end = 10.dp).width(4.dp).height(28.dp).clip(RoundedCornerShape(2.dp)).background(entry.source.color))
+                    Column(Modifier.weight(1f)) {
+                        Text(entry.item.text, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        if (mixed) Text(entry.source.label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
         }
     }
 }

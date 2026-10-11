@@ -282,7 +282,7 @@ fun TwoDoRoot(
                     ListScreen(app, space, spaceStatus, snackbar, onBack = { openSpaceId = null })
                 }
             }
-            home -> HomeScreen(app, lists, others, status, snackbar, navigation)
+            home -> HomeScreen(app, lists, others, calendarSources(calendars), status, snackbar, navigation, onOpen = ::open)
             group != null -> GroupScreen(app, group, lists, status, snackbar, navigation, onOpenSpace = { openSpaceId = it })
             allCalendars -> AllCalendarsScreen(app, calendars, navigation)
             else -> ListsScreen(app, others, status, snackbar, appTheme, navigation, onOpen = { openSpaceId = it })
@@ -452,10 +452,7 @@ private fun ListsScreen(
 @Composable
 private fun AllCalendarsScreen(app: TwoDoApp, calendars: List<Pair<TodoList, TodoList?>>, navigation: GroupNavigation) {
     var switching by remember { mutableStateOf(false) }
-    val sources = calendars.map { (calendar, group) ->
-        val color = (group?.sharedLook?.accent ?: ACCENTS[Math.floorMod((group ?: calendar).id.hashCode(), ACCENTS.size)])
-        ScheduleSource(calendar, group?.name ?: calendar.name, Color(color))
-    }
+    val sources = calendarSources(calendars)
     Scaffold(
         topBar = {
             TopAppBar(

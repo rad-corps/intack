@@ -5,6 +5,12 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+**What's on, right on the home screen.** Home now opens with today's schedule from all your calendars.
+On a quiet day it also shows the next few days. Tap an entry to open its calendar.
+
+**Groups first.** Lists live in groups: make new ones from a group's Lists tab. Lists you already have
+outside any group are still there, under the small "Lists outside groups" link at the bottom of home.
+
 ## v0.6.20 — 2026-10-11
 
 **A home screen.** Pressing back in a group no longer drops you out of the app: it goes to a new home

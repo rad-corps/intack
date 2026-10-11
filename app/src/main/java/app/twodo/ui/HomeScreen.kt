@@ -21,8 +21,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.PersonAdd
-import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.outlined.Checklist
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Card
@@ -35,6 +33,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -49,7 +48,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.twodo.R
 import app.twodo.TwoDoApp
-import app.twodo.model.SpaceKind
 import app.twodo.model.TodoList
 import app.twodo.model.calendarRef
 import app.twodo.model.listRefs
@@ -57,8 +55,9 @@ import app.twodo.sync.SyncStatus
 import java.time.LocalDate
 
 /**
- * The app's home: every group, the lists outside groups, and starting or joining a group. Back from
- * a group comes here; back from here leaves the app.
+ * The app's home: what's on today (or soon) across every calendar, every group, and starting or
+ * joining a group. Lists are made inside groups; lists outside any group are only a small link at the
+ * bottom, for anyone who has some. Back from a group comes here; back from here leaves the app.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,9 +65,11 @@ internal fun HomeScreen(
     app: TwoDoApp,
     lists: Map<String, TodoList>,
     others: List<TodoList>,
+    calendars: List<ScheduleSource>,
     status: Map<String, SyncStatus>,
     snackbar: SnackbarHostState,
     navigation: GroupNavigation,
+    onOpen: (String) -> Unit,
 ) {
     Scaffold(
         topBar = {
@@ -81,24 +82,27 @@ internal fun HomeScreen(
         snackbarHost = { SnackbarHost(snackbar) },
     ) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (calendars.isNotEmpty()) {
+                item { SectionTitle("Today") }
+                item { UpcomingSchedule(calendars, onOpen) }
+                item { Spacer(Modifier.size(8.dp)) }
+            }
             if (navigation.groups.isNotEmpty()) item { SectionTitle("Groups") }
             items(navigation.groups, key = { it.id }) { group ->
                 GroupCard(app, group, lists, status[group.id]) { navigation.onSwitch(group.id) }
-            }
-            if (navigation.hasAllCalendars || navigation.hasOtherLists) item { Spacer(Modifier.size(4.dp)) }
-            if (navigation.hasAllCalendars) {
-                item { HomeRow(Icons.Outlined.CalendarMonth, "All calendars", "Every group's calendar in one place", navigation.onAllCalendars) }
-            }
-            if (navigation.hasOtherLists) {
-                item {
-                    val toDo = others.filter { it.kind == SpaceKind.LIST && !it.archived }.sumOf { l -> l.visibleItems.count { !it.checked && !it.heading } }
-                    HomeRow(Icons.Outlined.Checklist, "Other lists", "${count(others.size, "list")} not in a group · $toDo to do", navigation.onOtherLists)
-                }
             }
             item { Spacer(Modifier.size(8.dp)) }
             item { HomeRow(Icons.Default.Add, "Start a new group", "A calendar and lists, shared with the people you choose", navigation.onNewGroup) }
             item { HomeRow(Icons.Default.PersonAdd, "Join with an invite", "Scan or paste someone's invite", navigation.onJoin) }
             item { HomeRow(Icons.Outlined.Settings, "Settings", "Your name, look, notifications and more", navigation.onSettings) }
+            // Lists outside groups still work (and invites to one still arrive), but out of the way.
+            if (others.isNotEmpty()) {
+                item {
+                    TextButton(onClick = navigation.onOtherLists, modifier = Modifier.padding(top = 8.dp)) {
+                        Text("Lists outside groups (${others.size})", style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            }
         }
     }
 }
@@ -166,5 +170,3 @@ private fun HomeRow(icon: ImageVector, title: String, detail: String, onClick: (
         }
     }
 }
-
-private fun count(n: Int, noun: String) = if (n == 1) "1 $noun" else "$n ${noun}s"
