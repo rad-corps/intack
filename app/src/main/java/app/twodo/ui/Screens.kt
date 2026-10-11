@@ -1269,7 +1269,7 @@ internal fun JoiningBanner(list: TodoList, status: SyncStatus) {
         Spacer(Modifier.height(8.dp))
         Text(
             when {
-                status.receiving || status.peerNames.isNotEmpty() || status.relayPeerNames.isNotEmpty() -> "Getting the $what…"
+                status.receiving || status.connecting || status.peerNames.isNotEmpty() || status.relayPeerNames.isNotEmpty() -> "Getting the $what…"
                 !status.online -> "Waiting for an internet connection…"
                 status.trackersOnline == 0 && status.relaysOnline == 0 -> "Connecting…"
                 else -> "Looking for the other phone… ${stringResource(R.string.brand_name)} needs to be open there, or have Sync in background on."
@@ -1395,6 +1395,7 @@ internal fun SyncStatus?.summary(): String {
     val people = online()
     return when {
         people.isNotEmpty() -> "In sync with ${joinNames(people)}"
+        connecting -> "Connecting…"
         !online -> "Offline · changes will send later"
         trackersOnline == 0 && relaysOnline == 0 -> "Connecting…"
         else -> "Waiting for the others to come online"

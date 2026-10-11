@@ -83,7 +83,8 @@ sealed class SyncMessage {
 
 /**
  * [online]: the phone has a network connection. [receiving]: a first sync with someone is under way
- * (e.g. just after joining).
+ * (e.g. just after joining). [connecting]: a direct connection is open but hasn't said who it is yet
+ * (the first message, usually within a few seconds).
  */
 data class SyncStatus(
     val trackersOnline: Int = 0,
@@ -93,6 +94,7 @@ data class SyncStatus(
     val relaysOnline: Int = 0,
     /** Others seen recently through the relays but not connected directly. */
     val relayPeerNames: List<String> = emptyList(),
+    val connecting: Boolean = false,
 )
 
 /**
@@ -579,7 +581,7 @@ class SyncManager(context: Context, private val repo: ListRepository, private va
         val recent = SystemClock.elapsedRealtime() - PRESENCE_WINDOW_MS
         _status.value = keys.keys.associateWith { id ->
             val open = swarms[id]?.openPeers.orEmpty()
-            val direct = open.map { it.deviceName ?: "Unknown device" }
+            val direct = open.mapNotNull { it.deviceName }
             val viaRelay = relayLists[id]?.seen?.values.orEmpty().filter { it.second > recent }.map { it.first } - direct.toSet()
             SyncStatus(
                 trackersOnline = pool?.online ?: 0,
@@ -588,6 +590,7 @@ class SyncManager(context: Context, private val repo: ListRepository, private va
                 online = online,
                 relaysOnline = relays?.online ?: 0,
                 relayPeerNames = viaRelay,
+                connecting = open.any { it.deviceName == null },
             )
         }
     }

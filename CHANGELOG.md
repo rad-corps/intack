@@ -5,6 +5,9 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+**No more "Unknown device".** For a moment after connecting, before the other phone has said who it
+is, a list could show "In sync with Unknown device". It now says "Connecting…" until it knows.
+
 ## v0.6.22 — 2026-10-12
 
 **Moving a heading moves its section.** Drag a heading and everything under it comes along: its items
