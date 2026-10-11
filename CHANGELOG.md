@@ -5,6 +5,10 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+**Moving a heading moves its section.** Drag a heading and everything under it comes along: its items
+tuck in under it while you drag and land with it. Dropping it in the middle of another section puts it
+after that section rather than splitting it.
+
 ## v0.6.21 — 2026-10-12
 
 **What's on, right on the home screen.** Home now opens with today's schedule from all your calendars.

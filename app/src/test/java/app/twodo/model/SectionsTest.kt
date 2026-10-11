@@ -62,4 +62,35 @@ class SectionsTest {
         // Milk dropped last: after apples.
         assertEquals(5, indexAmongAll(ordered, listOf(item("bread"), item("cheese"), item("apples"), item("milk")), "milk", 3))
     }
+
+    // bread, [Dairy 2] milk 3 cheese 4, [Fruit 5] apples 6, [Bakery 7]
+    private val positioned = listOf(
+        at("bread", 1.0), at("dairy", 2.0, true), at("milk", 3.0), at("cheese", 4.0),
+        at("fruit", 5.0, true), at("apples", 6.0), at("bakery", 7.0, true),
+    )
+
+    private fun orderAfter(moves: Map<String, Double>) =
+        positioned.map { it.id to (moves[it.id] ?: it.position) }.sortedBy { it.second }.map { it.first }
+
+    @Test
+    fun aSectionIsTheHeadingAndItsItems() {
+        assertEquals(listOf("dairy", "milk", "cheese"), sectionItems(positioned, "dairy").map { it.id })
+        assertEquals(listOf("bakery"), sectionItems(positioned, "bakery").map { it.id })
+    }
+
+    @Test
+    fun movingAHeadingTakesItsItems() {
+        // Without Dairy's section: bread, [Fruit] apples, [Bakery]. Dropped before Bakery (index 3).
+        assertEquals(listOf("bread", "fruit", "apples", "dairy", "milk", "cheese", "bakery"), orderAfter(sectionMove(positioned, "dairy", 3)))
+        // To the very end.
+        assertEquals(listOf("bread", "fruit", "apples", "bakery", "dairy", "milk", "cheese"), orderAfter(sectionMove(positioned, "dairy", 4)))
+    }
+
+    @Test
+    fun aDropInsideAnotherSectionGoesToItsEnd() {
+        // Bakery dropped between milk and cheese: lands after cheese, before Fruit.
+        assertEquals(listOf("bread", "dairy", "milk", "cheese", "bakery", "fruit", "apples"), orderAfter(sectionMove(positioned, "bakery", 3)))
+        // Fruit dropped at the very top, above the unsorted bread: lands before the first heading instead.
+        assertEquals(listOf("bread", "fruit", "apples", "dairy", "milk", "cheese", "bakery"), orderAfter(sectionMove(positioned, "fruit", 0)))
+    }
 }

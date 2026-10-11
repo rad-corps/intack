@@ -31,6 +31,40 @@ fun indexAmongAll(ordered: List<Item>, shown: List<Item>, itemId: String, index:
     return others.size
 }
 
+/** [headingId]'s section in [ordered]: the heading, then the items under it up to the next heading. */
+fun sectionItems(ordered: List<Item>, headingId: String): List<Item> {
+    val start = ordered.indexOfFirst { it.id == headingId }
+    if (start < 0) return emptyList()
+    val end = ordered.subList(start + 1, ordered.size).indexOfFirst { it.heading }.let { if (it < 0) ordered.size else start + 1 + it }
+    return ordered.subList(start, end)
+}
+
+/**
+ * New positions for moving [headingId]'s whole section to [dropIndex] among [ordered] without that
+ * section (the list as it looks while the heading is dragged on its own). A drop inside another
+ * section, or among the items above every heading, goes on to just before the next heading (or the
+ * end), so the section never splits another or takes in items that weren't in it.
+ */
+fun sectionMove(ordered: List<Item>, headingId: String, dropIndex: Int): Map<String, Double> {
+    val section = sectionItems(ordered, headingId)
+    if (section.isEmpty()) return emptyMap()
+    val ids = section.map { it.id }.toSet()
+    val rest = ordered.filter { it.id !in ids }
+    var index = dropIndex.coerceIn(0, rest.size)
+    while (index < rest.size && !rest[index].heading) index++
+    val before = rest.getOrNull(index - 1)?.position
+    val after = rest.getOrNull(index)?.position
+    val n = section.size
+    return section.mapIndexed { k, item ->
+        item.id to when {
+            before != null && after != null -> before + (after - before) * (k + 1) / (n + 1)
+            before != null -> before + k + 1
+            after != null -> after - (n - k)
+            else -> item.position
+        }
+    }.toMap()
+}
+
 /** The heading [itemId] sits under in [ordered] (a list's items in order), or null if it's above them all. */
 fun sectionOf(ordered: List<Item>, itemId: String): Item? {
     val index = ordered.indexOfFirst { it.id == itemId }

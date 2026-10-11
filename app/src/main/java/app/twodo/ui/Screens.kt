@@ -139,6 +139,7 @@ import app.twodo.model.SpaceKind
 import app.twodo.model.TodoList
 import app.twodo.model.headings
 import app.twodo.model.isJoining
+import app.twodo.model.sectionItems
 import app.twodo.model.sectionOf
 import app.twodo.sync.ListEvent
 import app.twodo.sync.Notifications
@@ -617,11 +618,25 @@ internal fun ListBody(app: TwoDoApp, list: TodoList, status: SyncStatus, modifie
                         animationSpec = tween(600),
                         label = "highlight",
                     )
-                    val dragHandle = Modifier.draggableHandle(onDragStopped = {
-                        val index = ordered.indexOfFirst { it.id == item.id }
-                        val target = if (list.hideHeadings) indexAmongAll(list.visibleItems, ordered, item.id, index) else index
-                        scope.launch { app.repo.moveItem(list.id, item.id, target) }
-                    })
+                    val dragHandle = if (item.heading) {
+                        // A heading takes its items with it: they fold away under it while it's dragged.
+                        Modifier.draggableHandle(
+                            onDragStarted = {
+                                val folded = sectionItems(ordered, item.id).drop(1).map { it.id }.toSet()
+                                ordered = ordered.filter { it.id !in folded }
+                            },
+                            onDragStopped = {
+                                val index = ordered.indexOfFirst { it.id == item.id }
+                                scope.launch { app.repo.moveSection(list.id, item.id, index) }
+                            },
+                        )
+                    } else {
+                        Modifier.draggableHandle(onDragStopped = {
+                            val index = ordered.indexOfFirst { it.id == item.id }
+                            val target = if (list.hideHeadings) indexAmongAll(list.visibleItems, ordered, item.id, index) else index
+                            scope.launch { app.repo.moveItem(list.id, item.id, target) }
+                        })
+                    }
                     if (item.heading) {
                         // A section heading: bold, no checkbox; tap to rename or delete.
                         Row(

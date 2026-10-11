@@ -33,6 +33,7 @@ import app.twodo.model.merge
 import app.twodo.model.mergeAudit
 import app.twodo.model.moved
 import app.twodo.model.newItemPosition
+import app.twodo.model.sectionMove
 import app.twodo.model.planGroup
 import app.twodo.model.syncedGroupName
 import kotlinx.coroutines.CoroutineScope
@@ -454,6 +455,18 @@ class ListRepository(private val dir: File, private val identity: Identity) {
             else -> (before + after) / 2
         }
         item.moved(pos, identity.deviceId, System.currentTimeMillis())
+    }
+
+    /** Moves a heading and everything under it together (see [sectionMove]). */
+    suspend fun moveSection(listId: String, headingId: String, dropIndex: Int): Unit = mutex.withLock {
+        val list = _lists.value[listId] ?: return
+        val now = System.currentTimeMillis()
+        val moved = sectionMove(list.visibleItems, headingId, dropIndex).mapNotNull { (id, pos) ->
+            list.items[id]?.takeIf { it.position != pos }?.moved(pos, identity.deviceId, now)
+        }
+        if (moved.isEmpty()) return
+        save(list.copy(items = list.items + moved.associateBy { it.id }))
+        moved.forEach { _localEdits.tryEmit(LocalEdit(listId, it, null, list.secret)) }
     }
 
     /** Adds a diary entry on [date], optionally at [time] ("HH:mm"). */
