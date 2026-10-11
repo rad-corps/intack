@@ -5,6 +5,8 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+## v0.6.18 — 2026-10-11
+
 **Backgrounds.** Choose from 17 built-in backgrounds: corkboard, notepaper and linen, the sea, forest,
 lakes and wildflowers, one for each season, and four soft colour washes. The app's colours are picked to
 match. Your own photos still work as before. Backgrounds now go everywhere: the app's home screen
