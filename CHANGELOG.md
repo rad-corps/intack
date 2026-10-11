@@ -5,6 +5,8 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+## v0.6.16 — 2026-10-11
+
 **Much less battery and data use.** Thanks to the new diagnostics, we found the app kept setting up
 new connections for every list every 30 seconds, even when it was already connected, using up to a
 core's worth of processor and a lot of mobile data. Now it only looks for the others when starting,
