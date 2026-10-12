@@ -5,6 +5,8 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+## v0.6.27 — 2026-10-13
+
 **Make it yours.** The Look editor has a new Style section:
 - **Spacing:** compact, comfortable or roomy.
 - **Items:** plain, with lines between, as cards, or outlined, with rounder or squarer corners.
