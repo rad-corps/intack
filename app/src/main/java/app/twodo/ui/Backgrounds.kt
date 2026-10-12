@@ -34,7 +34,7 @@ val BACKGROUNDS = listOf(
     ),
     BackgroundCategory(
         "Nature",
-        listOf(Background("sea", "Sea"), Background("forest", "Forest"), Background("lake", "Lake"), Background("wildflowers", "Wildflowers"), Background("sky", "Sunset sky")),
+        listOf(Background("sea", "Sea"), Background("forest", "Forest"), Background("lake", "Lake"), Background("wildflowers", "Wildflowers"), Background("sky", "Sunset sky"), Background("pixel-hills", "Pixel hills")),
     ),
     BackgroundCategory(
         "Seasons",

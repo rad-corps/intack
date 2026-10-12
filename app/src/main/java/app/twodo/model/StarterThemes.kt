@@ -87,24 +87,25 @@ val STARTER_THEMES = listOf(
         background-image: none;
         """,
     ),
-    // Bright retro platformer: big blue sky, grassy green edges, earth-brown headings, gold rings.
+    // Retro platformer: pixel blue sky over brown checkerboard ground, grass-green edges, gold rings.
     StarterTheme(
         "Sky Hills",
         """
-        theme: twodo-light;
-        background: #7cc8ff;
-        text: #0f2a4a;
-        accent: #2fa83a;
-        secondary: #8a4b1c;
+        theme: twodo-dark;
+        background: #06061a;
+        text: #ffffff;
+        accent: #3cbf24;
+        secondary: #ffe14d;
         tertiary: #ffd21f;
-        item-background: #ffffff;
+        item-background: #12127a;
         items: cards;
-        corners: 14px;
-        border: 3px solid #3cb043;
+        corners: 10px;
+        border: 3px solid #3cbf24;
         shadow: 3px;
         spacing: 14px;
         font: default;
-        background-image: none;
+        background-image: pixel-hills;
+        background-strength: 100%;
         """,
     ),
     // Disco night: deep purple, hot pink dotted outlines, glowing colours, scrawled text.
