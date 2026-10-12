@@ -1,5 +1,7 @@
 package app.twodo.ui
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -66,11 +68,35 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.runtime.produceState
 import app.twodo.model.sharedLook
 import android.graphics.BitmapFactory
+import android.widget.Toast
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Constraints
+import app.twodo.model.BORDER_DASHED
+import app.twodo.model.BORDER_DOTTED
+import app.twodo.model.BORDER_SOLID
+import app.twodo.model.BUILTIN_PREFIX
+import app.twodo.model.FONT_HANDWRITTEN
+import app.twodo.model.FONT_MONO
+import app.twodo.model.FONT_SERIF
+import app.twodo.model.ITEMS_CARDS
+import app.twodo.model.ITEMS_LINES
+import app.twodo.model.ITEMS_OUTLINED
+import app.twodo.model.ITEMS_PLAIN
+import app.twodo.model.ListStyle
+import app.twodo.model.parseThemeCode
+import app.twodo.model.themeCode
 import kotlinx.coroutines.launch
 
 /** Edits a group's look: everyone in it sees the same. */
@@ -158,6 +184,7 @@ private fun LookEditorDialog(
     var themeId by remember { mutableStateOf(saved.themeId) }
     var accent by remember { mutableStateOf(saved.accent) }
     var strength by remember { mutableFloatStateOf(saved.photoStrength) }
+    var style by remember { mutableStateOf(saved.style) }
     var choice by remember { mutableStateOf<PhotoChoice>(PhotoChoice.Keep) }
     // The chosen background, once loaded (a built-in one loads from the app, a picked one is decoded).
     var chosenImage by remember { mutableStateOf<ImageBitmap?>(null) }
@@ -172,7 +199,7 @@ private fun LookEditorDialog(
     }
     val photoTheme = remember(photo) { photo?.let { photoTheme(it) } }
     val photoAccents = remember(photo) { photo?.let { photoAccents(it) }.orEmpty() }
-    val candidate = Look(themeId = themeId.takeIf { it != PHOTO_THEME || photo != null }, accent = accent, photoStrength = strength)
+    val candidate = Look(themeId = themeId.takeIf { it != PHOTO_THEME || photo != null }, accent = accent, photoStrength = strength, style = style)
     val preview = resolve(candidate, appTheme, photo, photoTheme)
 
     /** A new background usually wants its own colours. */
@@ -201,12 +228,13 @@ private fun LookEditorDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {
-            Column(Modifier.verticalScroll(rememberScrollState())) {
-                Text(intro, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(Modifier.height(12.dp))
-                LookPreview(preview, previewTitle)
-                Spacer(Modifier.height(16.dp))
-
+          // The preview stays put while the options below it scroll.
+          Column {
+            Text(intro, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(12.dp))
+            LookPreview(preview, previewTitle)
+            Spacer(Modifier.height(12.dp))
+            Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())) {
                 Label("Background")
                 // One row for everything, so the preview above stays in sight; a labelled bookend starts each group.
                 val strip = remember {
@@ -295,7 +323,32 @@ private fun LookEditorDialog(
                     item { AccentDot(null, auto, accent == null) { accent = null } }
                     items((photoAccents + ACCENTS).distinct()) { argb -> AccentDot(argb, Color(argb), accent == argb) { accent = argb } }
                 }
+                Spacer(Modifier.height(16.dp))
+
+                StyleOptions(style, preview.theme.colors) { style = it }
+                Spacer(Modifier.height(16.dp))
+
+                // The code can name a built-in background (one of the user's own photos can't be written out).
+                val builtin = selectedId?.takeIf { isBuiltin(it) }
+                ThemeCodeBox(candidate.copy(photoId = builtin)) { result ->
+                    // Background first: choosing one resets the colours to suit it, and the code's colours win.
+                    val photoId = result.photoId
+                    if (photoId != builtin && !(photoId == null && selectedId == OWN_PHOTO)) {
+                        when {
+                            photoId == null -> choose(PhotoChoice.None, null)
+                            isBuiltin(photoId) -> scope.launch {
+                                choose(PhotoChoice.Builtin(photoId), loadBackground(context, photoId.removePrefix(BUILTIN_PREFIX)))
+                                themeId = result.themeId; accent = result.accent
+                            }
+                        }
+                    }
+                    themeId = result.themeId
+                    accent = result.accent
+                    strength = result.photoStrength
+                    style = result.style
+                }
             }
+          }
         },
         confirmButton = {
             TextButton(onClick = {
@@ -385,30 +438,40 @@ private fun Label(text: String) {
 private fun LookPreview(look: ResolvedLook, title: String) {
     val colors = look.theme.colors
     val shape = RoundedCornerShape(16.dp)
-    Box(Modifier.fillMaxWidth().height(150.dp).clip(shape).border(1.dp, MaterialTheme.colorScheme.outlineVariant, shape).background(colors.background)) {
+    Box(Modifier.fillMaxWidth().height(170.dp).clip(shape).border(1.dp, MaterialTheme.colorScheme.outlineVariant, shape).background(colors.background)) {
         look.photo?.let {
             Image(it, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
             Box(Modifier.fillMaxSize().background(colors.background.copy(alpha = veil(look.strength))))
         }
-        Column(Modifier.padding(14.dp)) {
-            Text(title, style = MaterialTheme.typography.titleMedium, color = colors.onBackground)
-            Spacer(Modifier.height(10.dp))
-            PreviewRow("Milk", true, colors.primary, colors.outline)
-            PreviewRow("Bread", false, colors.outline, colors.onBackground)
-            Spacer(Modifier.height(6.dp))
-            Box(Modifier.clip(RoundedCornerShape(10.dp)).background(colors.primaryContainer).padding(horizontal = 12.dp, vertical = 6.dp)) {
-                Text("Swimming 3:30 PM", style = MaterialTheme.typography.labelLarge, color = colors.onPrimaryContainer)
+        MaterialTheme(colorScheme = colors, typography = typographyIn(look.style.font)) {
+            Column(Modifier.padding(vertical = 10.dp)) {
+                Text(title, Modifier.padding(horizontal = 14.dp), style = MaterialTheme.typography.titleMedium, color = colors.onBackground)
+                Text(
+                    "Dairy",
+                    Modifier.padding(start = 14.dp, top = 6.dp, bottom = 2.dp),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colors.secondary,
+                )
+                PreviewRow("Milk", true, look.style, colors)
+                PreviewRow("Cheese", false, look.style, colors)
             }
         }
     }
 }
 
 @Composable
-private fun PreviewRow(text: String, checked: Boolean, tint: Color, textColor: Color) {
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 2.dp)) {
-        Icon(if (checked) Icons.Outlined.CheckBox else Icons.Outlined.CheckBoxOutlineBlank, null, tint = tint, modifier = Modifier.size(18.dp))
+private fun PreviewRow(text: String, checked: Boolean, style: ResolvedStyle, colors: androidx.compose.material3.ColorScheme) {
+    Row(
+        Modifier.fillMaxWidth().listRow(style, Color.Transparent, colors.surfaceContainerHigh).padding(horizontal = 14.dp, vertical = (style.spacing / 3).coerceAtLeast(2.dp)),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            if (checked) Icons.Outlined.CheckBox else Icons.Outlined.CheckBoxOutlineBlank, null,
+            tint = if (checked) colors.primary else colors.outline, modifier = Modifier.size(18.dp),
+        )
         Spacer(Modifier.width(8.dp))
-        Text(text, style = MaterialTheme.typography.bodyMedium, color = textColor)
+        Text(text, style = MaterialTheme.typography.bodyMedium, color = if (checked) colors.outline else colors.onBackground)
     }
 }
 
@@ -431,3 +494,143 @@ private fun AccentDot(argb: Long?, color: Color, selected: Boolean, onClick: () 
         )
     }
 }
+
+/** Page and item colours on offer: light ones, then dark. */
+private val SURFACES: List<Long> = listOf(
+    0xFFFFFFFF, 0xFFF7F3EA, 0xFFFFF4DC, 0xFFFCE4EC, 0xFFE8F4FD, 0xFFE6F4EA, 0xFFEDE7F6,
+    0xFF2A2A2A, 0xFF1B1B2F, 0xFF0D1B2E, 0xFF14211A, 0xFF2D1B33, 0xFF000000,
+)
+
+/** Spacing, item style, borders, shadows, extra colours and font. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun StyleOptions(style: ListStyle, colors: androidx.compose.material3.ColorScheme, onChange: (ListStyle) -> Unit) {
+    Label("Style")
+    SubLabel("Spacing")
+    val spacings = listOf("Compact" to 6, "Comfortable" to null, "Roomy" to 20)
+    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+        spacings.forEachIndexed { i, (name, value) ->
+            SegmentedButton(
+                selected = style.spacing == value || (value == null && style.spacing !in setOf(6, 20)),
+                onClick = { onChange(style.copy(spacing = value)) },
+                shape = SegmentedButtonDefaults.itemShape(i, spacings.size),
+            ) { Text(name) }
+        }
+    }
+    SubLabel("Items")
+    val items = style.items ?: ITEMS_PLAIN
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        listOf(ITEMS_PLAIN to "Plain", ITEMS_LINES to "Lines", ITEMS_CARDS to "Cards", ITEMS_OUTLINED to "Outlined").forEach { (value, name) ->
+            FilterChip(selected = items == value, onClick = { onChange(style.copy(items = value.takeIf { it != ITEMS_PLAIN })) }, label = { Text(name) })
+        }
+    }
+    val boxed = items == ITEMS_CARDS || items == ITEMS_OUTLINED
+    if (boxed) {
+        SubLabel("Corners")
+        Slider(value = (style.corners ?: 12).toFloat(), onValueChange = { onChange(style.copy(corners = it.toInt())) }, valueRange = 0f..28f)
+        SubLabel("Border")
+        val width = style.borderWidth ?: if (items == ITEMS_OUTLINED) 1 else 0
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilterChip(selected = width == 0, onClick = { onChange(style.copy(borderWidth = 0)) }, label = { Text("None") })
+            listOf(BORDER_SOLID to "Solid", BORDER_DASHED to "Dashed", BORDER_DOTTED to "Dotted").forEach { (value, name) ->
+                FilterChip(
+                    selected = width > 0 && (style.borderStyle ?: BORDER_SOLID) == value,
+                    onClick = { onChange(style.copy(borderStyle = value.takeIf { it != BORDER_SOLID }, borderWidth = width.coerceAtLeast(1))) },
+                    label = { Text(name) },
+                )
+            }
+        }
+        if (width > 0) {
+            Slider(value = width.toFloat(), onValueChange = { onChange(style.copy(borderWidth = it.toInt())) }, valueRange = 1f..6f, steps = 4)
+            ColourDots(style.borderColor, colors.outline, ACCENTS + SURFACES) { onChange(style.copy(borderColor = it)) }
+        }
+    }
+    if (items == ITEMS_CARDS) {
+        SubLabel("Shadow")
+        Slider(value = (style.shadow ?: 2).toFloat(), onValueChange = { onChange(style.copy(shadow = it.toInt())) }, valueRange = 0f..16f)
+    }
+    SubLabel("Item background")
+    ColourDots(style.itemColor, if (items == ITEMS_CARDS) colors.surfaceContainerHigh else Color.Transparent, SURFACES + ACCENTS) { onChange(style.copy(itemColor = it)) }
+    SubLabel("Headings (secondary colour)")
+    ColourDots(style.secondary, colors.primary, ACCENTS) { onChange(style.copy(secondary = it)) }
+    SubLabel("Highlights (tertiary colour)")
+    ColourDots(style.tertiary, colors.primary, ACCENTS) { onChange(style.copy(tertiary = it)) }
+    SubLabel("Page colour")
+    ColourDots(style.background, null, SURFACES) { onChange(style.copy(background = it)) }
+    SubLabel("Font")
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        listOf(null to "Default", FONT_SERIF to "Serif", FONT_MONO to "Mono", FONT_HANDWRITTEN to "Handwritten").forEach { (value, name) ->
+            FilterChip(selected = style.font == value, onClick = { onChange(style.copy(font = value)) }, label = { Text(name) })
+        }
+    }
+}
+
+@Composable
+private fun SubLabel(text: String) {
+    Text(text, Modifier.padding(top = 10.dp, bottom = 4.dp), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+}
+
+/** "Auto" (the theme's own, shown as [auto]; none if null) and then each of [options]. */
+@Composable
+private fun ColourDots(selected: Long?, auto: Color?, options: List<Long>, onPick: (Long?) -> Unit) {
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        item { AccentDot(null, auto ?: MaterialTheme.colorScheme.surfaceVariant, selected == null) { onPick(null) } }
+        items(options.distinct()) { argb -> AccentDot(argb, Color(argb), selected == argb) { onPick(argb) } }
+    }
+}
+
+/**
+ * The look as theme code (see ThemeCode.kt): read it, copy it to share, or edit it and apply — like
+ * customising a page on the early web, but it can only ever set the options above.
+ */
+@Composable
+private fun ThemeCodeBox(look: Look, onApply: (Look) -> Unit) {
+    val context = LocalContext.current
+    var editing by remember { mutableStateOf<String?>(null) }
+    var problems by remember { mutableStateOf<List<String>>(emptyList()) }
+    // Changing an option with the buttons while the code is open: show the code for that instead,
+    // rather than keep text that would undo it on Apply.
+    val written = themeCode(look)
+    var editedFrom by remember { mutableStateOf(written) }
+    if (editing != null && written != editedFrom) {
+        editing = written
+        editedFrom = written
+        problems = emptyList()
+    }
+    val mono = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace)
+    Label("Theme code")
+    Text(
+        "For tinkerers: write or paste a theme, CSS-style. Copy yours to share it with someone.",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Spacer(Modifier.height(8.dp))
+    val code = editing
+    if (code == null) {
+        val current = themeCode(look).ifEmpty { "/* All defaults. Try:  items: cards;  border: 2px dashed hotpink; */" }
+        Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.surfaceVariant).padding(10.dp)) {
+            Text(current, style = mono)
+        }
+        Row {
+            TextButton(onClick = { editing = written; editedFrom = written; problems = emptyList() }) { Text("Edit") }
+            TextButton(onClick = {
+                context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText("Theme", themeCode(look)))
+                Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
+            }) { Text("Copy") }
+        }
+    } else {
+        OutlinedTextField(value = code, onValueChange = { editing = it }, textStyle = mono, minLines = 5, modifier = Modifier.fillMaxWidth())
+        problems.forEach { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
+        Row {
+            TextButton(onClick = {
+                val result = parseThemeCode(code, look, THEMES.map { it.id }.toSet() + PHOTO_THEME)
+                problems = result.problems
+                editedFrom = themeCode(result.look)
+                onApply(result.look)
+                if (result.problems.isEmpty()) editing = null
+            }) { Text("Apply") }
+            TextButton(onClick = { editing = null; problems = emptyList() }) { Text("Done") }
+        }
+    }
+}
+

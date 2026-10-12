@@ -631,11 +631,12 @@ internal fun ListBody(app: TwoDoApp, list: TodoList, status: SyncStatus, modifie
         LazyColumn(Modifier.weight(1f), state = listState, contentPadding = PaddingValues(bottom = 8.dp)) {
             items(ordered, key = { it.id }) { item ->
                 ReorderableItem(reorderState, key = item.id) {
+                    val rowStyle = LocalListStyle.current
                     val background by animateColorAsState(
                         when {
-                            item.id == target -> MaterialTheme.colorScheme.secondaryContainer
+                            item.id == target -> MaterialTheme.colorScheme.tertiaryContainer
                             item.id in highlighted -> MaterialTheme.colorScheme.primaryContainer
-                            else -> MaterialTheme.colorScheme.surface
+                            else -> Color.Transparent
                         },
                         animationSpec = tween(if (dragging != null) 150 else 600),
                         label = "highlight",
@@ -686,7 +687,7 @@ internal fun ListBody(app: TwoDoApp, list: TodoList, status: SyncStatus, modifie
                                     Modifier.weight(1f).padding(vertical = 8.dp),
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.primary,
+                                    color = MaterialTheme.colorScheme.secondary,
                                 )
                                 Icon(painterResource(R.drawable.ic_drag_handle), "Move heading", tint = MaterialTheme.colorScheme.outline, modifier = dragHandle.padding(12.dp))
                             }
@@ -695,7 +696,7 @@ internal fun ListBody(app: TwoDoApp, list: TodoList, status: SyncStatus, modifie
                         return@ReorderableItem
                     }
                     Row(
-                        Modifier.fillMaxWidth().background(background).padding(start = 8.dp, end = 4.dp),
+                        Modifier.fillMaxWidth().listRow(rowStyle, background, MaterialTheme.colorScheme.surfaceContainerHigh).padding(start = 8.dp, end = 4.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         // The checkbox ticks; the words open the item to change or delete it.
@@ -708,7 +709,7 @@ internal fun ListBody(app: TwoDoApp, list: TodoList, status: SyncStatus, modifie
                                 uncheckedColor = MaterialTheme.colorScheme.outline,
                             ),
                         )
-                        Column(Modifier.weight(1f).clip(RoundedCornerShape(8.dp)).clickable { editing = item }.padding(vertical = 12.dp, horizontal = 4.dp)) {
+                        Column(Modifier.weight(1f).clip(RoundedCornerShape(8.dp)).clickable { editing = item }.padding(vertical = rowStyle.spacing, horizontal = 4.dp)) {
                             Text(
                                 item.text,
                                 style = MaterialTheme.typography.bodyLarge,

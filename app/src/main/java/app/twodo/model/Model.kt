@@ -134,6 +134,8 @@ data class Look(
     val photoStrength: Float = 0.45f,
     /** Accent colour (ARGB) overriding the theme's; null keeps the theme's. */
     val accent: Long? = null,
+    /** Spacing, item style, borders, shadows, fonts and extra colours (see ThemeCode.kt). */
+    val style: ListStyle = ListStyle(),
 )
 
 /** A change of background in a look editor. */

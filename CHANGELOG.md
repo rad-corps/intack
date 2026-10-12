@@ -5,6 +5,21 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+**Make it yours.** The Look editor has a new Style section:
+- **Spacing:** compact, comfortable or roomy.
+- **Items:** plain, with lines between, as cards, or outlined, with rounder or squarer corners.
+- **Borders:** solid, dashed or dotted, any thickness and colour.
+- **Shadows** under cards.
+- **Colours:** item background, headings (secondary), highlights (tertiary) and the page itself.
+- **Font:** default, serif, mono or handwritten.
+
+The preview now stays at the top while you scroll through the options. Groups share their style with
+everyone in them, like the rest of their look.
+
+**Theme code, for tinkerers.** Write or paste a whole look like old-school CSS, for example
+`background: #1b1b2f; items: cards; border: 2px dashed hotpink; font: mono;`. Copy yours to share
+it. It can only set the options above, so a pasted theme is always safe.
+
 ## v0.6.26 — 2026-10-13
 
 **A tidier look editor.** All the backgrounds are now in one row you swipe through, with each group

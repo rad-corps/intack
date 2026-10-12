@@ -5,6 +5,7 @@ import android.graphics.BitmapFactory
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import app.twodo.TwoDoApp
+import app.twodo.model.BUILTIN_PREFIX
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -40,8 +41,6 @@ val BACKGROUNDS = listOf(
         listOf(Background("spring", "Spring"), Background("summer", "Summer"), Background("autumn", "Autumn"), Background("winter", "Winter")),
     ),
 )
-
-private const val BUILTIN_PREFIX = "builtin:"
 
 fun isBuiltin(photoId: String?): Boolean = photoId?.startsWith(BUILTIN_PREFIX) == true
 

@@ -38,8 +38,8 @@ import android.graphics.Color as AndroidColor
 /** Theme id meaning "take the colours from the group's photo". */
 const val PHOTO_THEME = "photo"
 
-/** Everything that decides how a screen looks: its colours, and a photo behind it (with how strongly it shows). */
-class ResolvedLook(val theme: AppTheme, val photo: ImageBitmap?, val strength: Float)
+/** Everything that decides how a screen looks: its colours, a photo behind it (with how strongly it shows), and how lists are styled. */
+class ResolvedLook(val theme: AppTheme, val photo: ImageBitmap?, val strength: Float, val style: ResolvedStyle = DEFAULT_STYLE)
 
 /** Accent colours offered alongside the theme's own and the photo's. */
 val ACCENTS: List<Long> = listOf(
@@ -81,8 +81,9 @@ fun resolve(look: Look, appTheme: AppTheme, photo: ImageBitmap?, photoTheme: App
         PHOTO_THEME -> photoTheme ?: appTheme
         else -> themeById(look.themeId)
     }
-    val theme = look.accent?.let { base.withAccent(Color(it)) } ?: base
-    return ResolvedLook(theme, photo, look.photoStrength)
+    val accented = look.accent?.let { base.withAccent(Color(it)) } ?: base
+    val theme = AppTheme(accented.id, accented.name, accented.dark, styledColors(accented.colors, accented.dark, look.style))
+    return ResolvedLook(theme, photo, look.photoStrength, resolveStyle(look.style, theme.colors))
 }
 
 /**
@@ -100,8 +101,8 @@ fun LookSurface(look: ResolvedLook, content: @Composable () -> Unit) {
         }
         val scheme = if (photo == null) colors else colors.copy(background = Color.Transparent, surface = Color.Transparent)
         // Screens without a Scaffold (e.g. the welcome screen) still get the theme's text colour.
-        MaterialTheme(colorScheme = scheme) {
-            CompositionLocalProvider(LocalContentColor provides colors.onBackground, content = content)
+        MaterialTheme(colorScheme = scheme, typography = typographyIn(look.style.font)) {
+            CompositionLocalProvider(LocalContentColor provides colors.onBackground, LocalListStyle provides look.style, content = content)
         }
     }
 }
