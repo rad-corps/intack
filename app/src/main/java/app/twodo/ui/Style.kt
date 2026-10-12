@@ -113,13 +113,13 @@ fun Modifier.listRow(style: ResolvedStyle, fill: Color, cardColor: Color): Modif
     ITEMS_CARDS -> padding(horizontal = 12.dp, vertical = 4.dp)
         .shadow(style.shadow, style.shape, clip = false)
         .clip(style.shape)
-        .background(if (fill != Color.Transparent && fill != Color.Unspecified) fill else style.itemColor ?: cardColor)
+        .background(if (fill != Color.Transparent && fill != Color.Unspecified) fill else (style.itemColor ?: cardColor).halved())
         .styledBorder(style)
     ITEMS_OUTLINED -> padding(horizontal = 12.dp, vertical = 4.dp)
         .clip(style.shape)
-        .background(if (fill != Color.Transparent && fill != Color.Unspecified) fill else style.itemColor ?: Color.Transparent)
+        .background(if (fill != Color.Transparent && fill != Color.Unspecified) fill else style.itemColor?.halved() ?: Color.Transparent)
         .styledBorder(style)
-    ITEMS_LINES -> background(style.itemColor?.takeIf { fill == Color.Transparent || fill == Color.Unspecified } ?: fill)
+    ITEMS_LINES -> background(style.itemColor?.halved()?.takeIf { fill == Color.Transparent || fill == Color.Unspecified } ?: fill)
         .drawBehind {
             // As thick as the border, if one is set (otherwise a hairline), and that solid when it's thick.
             val width = style.borderWidth.coerceAtLeast(1.dp).toPx()
@@ -127,8 +127,11 @@ fun Modifier.listRow(style: ResolvedStyle, fill: Color, cardColor: Color): Modif
             val colour = if (style.borderWidth > 1.dp) style.borderColor else style.borderColor.copy(alpha = 0.6f)
             drawLine(colour, Offset(16.dp.toPx(), y), Offset(size.width - 16.dp.toPx(), y), width)
         }
-    else -> background(style.itemColor?.takeIf { fill == Color.Transparent || fill == Color.Unspecified } ?: fill)
+    else -> background(style.itemColor?.halved()?.takeIf { fill == Color.Transparent || fill == Color.Unspecified } ?: fill)
 }
+
+/** Item backgrounds sit at half their opacity, so the page or photo shows through. */
+private fun Color.halved() = copy(alpha = alpha * 0.5f)
 
 /** The style's border around the row's shape: solid, dashed or dotted. */
 fun Modifier.styledBorder(style: ResolvedStyle): Modifier {

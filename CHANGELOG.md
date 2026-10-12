@@ -5,6 +5,13 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+**Group settings match your look.** The people and settings rows in a group's settings now take the
+same style as list items: cards or outlines, borders, item colours, shadows and spacing. Section
+titles use the heading colour.
+
+**See-through items.** Item backgrounds are now half as opaque, so your background shows through a
+little.
+
 ## v0.6.29 — 2026-10-13
 
 **Sky Hills goes retro.** The Sky Hills starter theme now has its own pixel-art background: a deep

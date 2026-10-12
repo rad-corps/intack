@@ -375,8 +375,10 @@ private fun GroupSettingsTab(
     var leaving by remember { mutableStateOf(false) }
     val online = status.online().toSet()
     val people = group.members.map { (id, name) -> id to (names[id] ?: name) }.sortedBy { it.second.lowercase() }
-    LazyColumn(contentPadding = PaddingValues(16.dp)) {
-        item { SectionTitle("People in ${group.name}") }
+    // Rows are drawn like list items, in the group's style; everything else keeps a 16dp margin.
+    val margin = Modifier.padding(horizontal = 16.dp)
+    LazyColumn(contentPadding = PaddingValues(vertical = 16.dp)) {
+        item { Box(margin) { SectionTitle("People in ${group.name}") } }
         item { PersonRow(app.identity.deviceId, "${app.identity.deviceName} (you)", "This phone", true) }
         items(people, key = { it.first }) { (id, name) ->
             val here = name in online
@@ -386,13 +388,13 @@ private fun GroupSettingsTab(
             if (people.isEmpty()) {
                 Text(
                     "Nobody else yet. Invite the people you want to share the calendar and lists with.",
-                    Modifier.padding(vertical = 8.dp),
+                    margin.padding(vertical = 8.dp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             Button(
                 onClick = onInvite,
-                modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                modifier = margin.fillMaxWidth().padding(vertical = 12.dp),
                 contentPadding = PaddingValues(vertical = 14.dp),
             ) {
                 Icon(Icons.Default.PersonAdd, null)
@@ -400,7 +402,7 @@ private fun GroupSettingsTab(
                 Text("Invite someone")
             }
             Spacer(Modifier.height(12.dp))
-            SectionTitle("This group")
+            Box(margin) { SectionTitle("This group") }
             SettingRow(Icons.Outlined.Palette, "Look", "Colours and a background photo, for everyone in ${group.name}") { editingLook = true }
             SettingRow(Icons.Outlined.Edit, "Rename group", group.name) { renaming = true }
             SettingRow(Icons.AutoMirrored.Outlined.Logout, "Leave group", "Removes ${group.name} from this phone", danger = true) { leaving = true }
@@ -436,14 +438,19 @@ internal fun SectionTitle(text: String) {
         text,
         Modifier.padding(top = 4.dp, bottom = 8.dp),
         style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.primary,
+        color = MaterialTheme.colorScheme.secondary,
         fontWeight = FontWeight.SemiBold,
     )
 }
 
 @Composable
 private fun PersonRow(id: String, name: String, detail: String, here: Boolean) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+    val style = LocalListStyle.current
+    Row(
+        Modifier.fillMaxWidth().listRow(style, Color.Transparent, MaterialTheme.colorScheme.surfaceContainerHigh)
+            .padding(horizontal = 16.dp, vertical = (style.spacing - 4.dp).coerceAtLeast(4.dp)),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         Avatar(id, name)
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
@@ -477,8 +484,10 @@ internal fun Avatar(id: String, name: String, size: Int = 44) {
 @Composable
 private fun SettingRow(icon: ImageVector, title: String, detail: String, danger: Boolean = false, onClick: () -> Unit) {
     val tint = if (danger) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+    val style = LocalListStyle.current
     Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable(onClick = onClick).padding(vertical = 12.dp, horizontal = 4.dp),
+        Modifier.fillMaxWidth().listRow(style, Color.Transparent, MaterialTheme.colorScheme.surfaceContainerHigh)
+            .clickable(onClick = onClick).padding(vertical = style.spacing, horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(icon, null, tint = if (danger) tint else MaterialTheme.colorScheme.primary)
