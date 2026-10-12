@@ -5,6 +5,8 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+## v0.6.24 — 2026-10-12
+
 **Items always stay under their heading.** Each item now remembers which heading it's under, so moving
 a heading always brings its items, even if someone adds or moves items in that section at the same
 moment on another phone. Everyone in a list needs this version for headings to show right.
