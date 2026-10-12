@@ -5,6 +5,8 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+## v0.6.30 — 2026-10-13
+
 **Group settings match your look.** The people and settings rows in a group's settings now take the
 same style as list items: cards or outlines, borders, item colours, shadows and spacing. Section
 titles use the heading colour.
