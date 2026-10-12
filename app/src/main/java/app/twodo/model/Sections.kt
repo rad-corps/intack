@@ -75,6 +75,12 @@ fun sectionOf(ordered: List<Item>, itemId: String): Item? {
     return ordered.subList(0, index).lastOrNull { it.heading }
 }
 
+/** [ordered] as it will be once [headingId] is dropped at [dropIndex] (see [headingMove]). */
+fun afterHeadingMove(ordered: List<Item>, headingId: String, dropIndex: Int): List<Item> {
+    val pos = headingMove(ordered, headingId, dropIndex) ?: return ordered
+    return sectionedOrder(ordered.map { if (it.id == headingId) it.copy(pos = pos) else it })
+}
+
 /** Halfway between two positions, or one step past whichever there is. */
 private fun between(before: Double?, after: Double?, fallback: Double): Double = when {
     before != null && after != null -> (before + after) / 2
@@ -105,16 +111,29 @@ fun itemToSection(ordered: List<Item>, itemId: String, headingId: String?): Pair
 
 /**
  * The new position of [headingId] dropped at [dropIndex] among [ordered] without its section (the
- * list as it looks while the heading is dragged on its own). A drop inside another section, or among
- * the unsorted items, goes on to just before the next heading (or the end). Its items come along
- * because they're its items.
+ * list as it looks while the heading is dragged). Sections can't split one another, so a drop inside
+ * another section goes to whichever end of it is nearer — on a tie, the end it was being dragged
+ * towards — and a drop among the unsorted items goes below them. Its items come along because they're
+ * its items.
  */
 fun headingMove(ordered: List<Item>, headingId: String, dropIndex: Int): Double? {
     val heading = ordered.firstOrNull { it.id == headingId } ?: return null
     val ids = sectionItems(ordered, headingId).map { it.id }.toSet()
     val rest = ordered.filter { it.id !in ids }
     var index = dropIndex.coerceIn(0, rest.size)
-    while (index < rest.size && !rest[index].heading) index++
+    if (index < rest.size && !rest[index].heading) {
+        val above = (index - 1 downTo 0).firstOrNull { rest[it].heading }
+        val below = (index until rest.size).firstOrNull { rest[it].heading } ?: rest.size
+        val wasAt = ordered.takeWhile { it.id != headingId }.count { it.id !in ids }
+        val movingDown = index > wasAt
+        index = when {
+            above == null -> below
+            index - above < below - index -> above
+            index - above > below - index -> below
+            movingDown -> below
+            else -> above
+        }
+    }
     val before = rest.subList(0, index).lastOrNull { it.heading }?.position
     val after = rest.getOrNull(index)?.position
     return between(before, after, heading.position)

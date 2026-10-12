@@ -5,6 +5,14 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+**Dragging headings fixed properly.** Moving a heading a second time could put it in the wrong place
+and leave the list looking jumbled; that's fixed. While you drag a heading, its items now travel with
+it as one block, so you can see the whole section move. A heading dropped in the middle of another
+section goes to whichever end of it is nearer (or the way you were dragging, if it's halfway).
+
+**Sections repair themselves.** Phones that briefly ran an older version could lose which heading
+items belong to. They now get it back from the others the next time they sync.
+
 ## v0.6.24 — 2026-10-12
 
 **Items always stay under their heading.** Each item now remembers which heading it's under, so moving

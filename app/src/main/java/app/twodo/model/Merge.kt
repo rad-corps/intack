@@ -59,8 +59,10 @@ fun TodoList.merge(remote: Collection<Item>): MergeResult {
                 winner
             }
         }
-        // Position (and section) is merged on its own: the latest move wins, silently.
-        val latestMove = maxOf(l, r, compareBy(nullsFirst()) { it.posVersion })
+        // Position (and section) is merged on its own: the latest move wins, silently. Between two copies
+        // of the same move, one that records the section wins over one that lost it (passed through a
+        // version that didn't know sections), so a phone that lost them gets them back.
+        val latestMove = maxOf(l, r, compareBy<Item, Version?>(nullsFirst()) { it.posVersion }.thenBy { it.section != null })
         merged = merged.copy(pos = latestMove.pos, posVersion = latestMove.posVersion, section = latestMove.section)
         if (merged != l) {
             items[r.id] = merged

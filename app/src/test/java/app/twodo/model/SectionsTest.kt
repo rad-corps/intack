@@ -121,4 +121,35 @@ class SectionsTest {
         // Bread dropped after cheese: right after cheese, still in Dairy.
         assertEquals(3, indexAmongAll(ordered, listOf(shown[1], shown[2], shown[0], shown[3]), "bread", 2))
     }
+
+    @Test
+    fun aCopyThatLostItsSectionGetsItBack() {
+        // The same move on two phones, but one copy passed through a version that dropped the section.
+        val moved = list.items.getValue("milk").moved(5.0, "B", 3)
+        val lost = moved.copy(section = null)
+        val repaired = list.with(lost).merge(listOf(moved)).list
+        assertEquals("dairy", repaired.items.getValue("milk").section)
+        // And the phone that has it keeps it.
+        assertEquals("dairy", list.with(moved).merge(listOf(lost)).list.items.getValue("milk").section)
+    }
+
+    @Test
+    fun aHeadingDroppedJustUnderAnotherGoesAboveIt() {
+        // Bakery dropped between the Fruit heading and apples (index 5 among the others): above Fruit.
+        val pos = headingMove(ordered, "bakery", 5)!!
+        assertEquals(listOf("bread", "dairy", "milk", "cheese", "bakery", "fruit", "apples"), ids(list.with(list.items.getValue("bakery").moved(pos, "A", 2)).visibleItems))
+    }
+
+    @Test
+    fun aDropRightBetweenTwoSectionEdgesGoesTheWayItWasDragged() {
+        // [Fresh] tomatoes, [Fridge] milk: Fresh dragged down, dropped between Fridge and milk
+        // (index 1 among the others: fridge, milk): a tie, so it goes below Fridge's section.
+        val two = listOf(heading("fresh", 1.0), item("tomatoes", 1.0, "fresh"), heading("fridge", 2.0), item("milk", 1.0, "fridge"))
+        val order = sectionedOrder(two)
+        assertEquals(listOf("fridge", "milk", "fresh", "tomatoes"), ids(afterHeadingMove(order, "fresh", 1)))
+        // Fridge dragged up into the same spot (between Fresh and tomatoes): above Fresh.
+        assertEquals(listOf("fridge", "milk", "fresh", "tomatoes"), ids(afterHeadingMove(order, "fridge", 1)))
+        // Dropped where it already was: nothing changes.
+        assertEquals(ids(order), ids(afterHeadingMove(order, "fridge", 2)))
+    }
 }

@@ -18,6 +18,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.FloatingActionButtonDefaults
@@ -102,6 +103,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
@@ -134,6 +136,7 @@ import app.twodo.model.Invite
 import app.twodo.model.Item
 import app.twodo.model.LIST_TEMPLATES
 import app.twodo.model.ListTemplate
+import app.twodo.model.afterHeadingMove
 import app.twodo.model.STATUS_DELETED
 import app.twodo.model.ShareLink
 import app.twodo.model.SpaceKind
@@ -604,9 +607,16 @@ internal fun ListBody(app: TwoDoApp, list: TodoList, status: SyncStatus, modifie
         ArchiveBanner(app, list)
         // Local copy so dragging is smooth; committed to the repository when the drag ends.
         val shown = if (list.hideHeadings) list.visibleItems.filter { !it.heading } else list.visibleItems
-        var ordered by remember(shown) { mutableStateOf(shown) }
+        // The drag handles keep the callbacks they're first given, so everything those read must be
+        // current: one lasting state for the order on screen, and the latest list.
+        val current by rememberUpdatedState(list)
+        var ordered by remember(list.id) { mutableStateOf(shown) }
         // The item being dragged: the heading of the section it would land in lights up.
         var dragging by remember { mutableStateOf<String?>(null) }
+        // A heading being dragged carries its items: they're drawn under it, inside the dragged block.
+        var carried by remember { mutableStateOf<Pair<String, List<Item>>?>(null) }
+        // Follow changes to the list, except mid-drag, when the order on screen is the drag's.
+        LaunchedEffect(shown) { if (dragging == null && carried == null) ordered = shown }
         val target = dragging?.let { id -> sectionOf(ordered, id)?.id }
         val listState = rememberLazyListState()
         val reorderState = rememberReorderableLazyListState(listState) { from, to ->
@@ -631,15 +641,20 @@ internal fun ListBody(app: TwoDoApp, list: TodoList, status: SyncStatus, modifie
                         label = "highlight",
                     )
                     val dragHandle = if (item.heading) {
-                        // A heading takes its items with it: they fold away under it while it's dragged.
+                        // A heading takes its items with it: they come out of the list and ride along under it.
                         Modifier.draggableHandle(
                             onDragStarted = {
-                                val folded = sectionItems(ordered, item.id).drop(1).map { it.id }.toSet()
-                                ordered = ordered.filter { it.id !in folded }
+                                val items = sectionItems(ordered, item.id).drop(1)
+                                carried = item.id to items
+                                ordered = ordered.filter { it !in items }
                             },
                             onDragStopped = {
                                 val index = ordered.indexOfFirst { it.id == item.id }
-                                scope.launch { app.repo.moveSection(list.id, item.id, index) }
+                                // Show the result straight away (the same as the saved move will give), whether
+                                // or not anything actually moved.
+                                ordered = afterHeadingMove(current.visibleItems, item.id, index)
+                                carried = null
+                                scope.launch { app.repo.moveSection(current.id, item.id, index) }
                             },
                         )
                     } else {
@@ -648,26 +663,34 @@ internal fun ListBody(app: TwoDoApp, list: TodoList, status: SyncStatus, modifie
                             onDragStopped = {
                                 dragging = null
                                 val index = ordered.indexOfFirst { it.id == item.id }
-                                val drop = if (list.hideHeadings) indexAmongAll(list.visibleItems, ordered, item.id, index) else index
-                                scope.launch { app.repo.moveItem(list.id, item.id, drop) }
+                                val drop = if (current.hideHeadings) indexAmongAll(current.visibleItems, ordered, item.id, index) else index
+                                scope.launch { app.repo.moveItem(current.id, item.id, drop) }
                             },
                         )
                     }
                     if (item.heading) {
-                        // A section heading: bold, no checkbox; tap to rename or delete.
-                        Row(
-                            Modifier.fillMaxWidth().background(background).clickable { editing = item }
-                                .padding(start = 20.dp, end = 4.dp, top = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
+                        val riding = carried?.takeIf { it.first == item.id }?.second
+                        Column(
+                            if (riding == null) Modifier
+                            else Modifier.shadow(6.dp, RoundedCornerShape(12.dp)).clip(RoundedCornerShape(12.dp))
+                                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
                         ) {
-                            Text(
-                                item.text,
-                                Modifier.weight(1f).padding(vertical = 8.dp),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.primary,
-                            )
-                            Icon(painterResource(R.drawable.ic_drag_handle), "Move heading", tint = MaterialTheme.colorScheme.outline, modifier = dragHandle.padding(12.dp))
+                            // A section heading: bold, no checkbox; tap to rename or delete.
+                            Row(
+                                Modifier.fillMaxWidth().background(if (riding == null) background else Color.Transparent).clickable { editing = item }
+                                    .padding(start = 20.dp, end = 4.dp, top = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    item.text,
+                                    Modifier.weight(1f).padding(vertical = 8.dp),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                                Icon(painterResource(R.drawable.ic_drag_handle), "Move heading", tint = MaterialTheme.colorScheme.outline, modifier = dragHandle.padding(12.dp))
+                            }
+                            riding?.forEach { CarriedItem(it) }
                         }
                         return@ReorderableItem
                     }
@@ -1533,6 +1556,21 @@ internal fun TemplateChoice(selected: ListTemplate, onSelect: (ListTemplate) -> 
             "Headings: ${selected.headings.joinToString(", ")}. Rename or remove them by tapping, or hide them from the ⋮ menu.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+/** An item travelling under its heading while the heading is dragged: how it looks in the list, but still. */
+@Composable
+private fun CarriedItem(item: Item) {
+    Row(Modifier.fillMaxWidth().padding(start = 8.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Checkbox(checked = item.checked, onCheckedChange = null, modifier = Modifier.padding(12.dp))
+        Text(
+            item.text,
+            Modifier.weight(1f).padding(vertical = 12.dp, horizontal = 4.dp),
+            style = MaterialTheme.typography.bodyLarge,
+            textDecoration = if (item.checked) TextDecoration.LineThrough else null,
+            color = if (item.checked) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.onSurface,
         )
     }
 }
