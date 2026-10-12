@@ -5,6 +5,8 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+## v0.6.28 — 2026-10-13
+
 **Starter themes.** Not sure where to begin? The Look editor now has six ready-made themes, each a
 single tap:
 - **Cyberdeck:** LED green on black, like an old desktop media player.
