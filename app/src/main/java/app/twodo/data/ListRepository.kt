@@ -13,7 +13,6 @@ import app.twodo.model.STATUS_ARCHIVED
 import app.twodo.model.LIST_STATUS_ITEM
 import app.twodo.model.Look
 import app.twodo.model.PhotoChoice
-import app.twodo.model.indexForSection
 import app.twodo.model.isPhotoPart
 import app.twodo.model.photoBase64
 import app.twodo.model.photoPartId
@@ -29,12 +28,16 @@ import app.twodo.model.TodoList
 import app.twodo.model.Version
 import app.twodo.model.auditEntryFor
 import app.twodo.model.edited
+import app.twodo.model.headingMove
+import app.twodo.model.itemMove
+import app.twodo.model.itemToSection
 import app.twodo.model.merge
 import app.twodo.model.mergeAudit
 import app.twodo.model.moved
+import app.twodo.model.newHeadingPosition
 import app.twodo.model.newItemPosition
-import app.twodo.model.sectionMove
 import app.twodo.model.planGroup
+import app.twodo.model.sectionsFromPositions
 import app.twodo.model.syncedGroupName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -99,7 +102,7 @@ class ListRepository(private val dir: File, private val identity: Identity) {
         }
         val list = TodoList(
             UUID.randomUUID().toString(), name.trim().ifEmpty { fallback }, ListKeys.newSecret(),
-            createdHere = true, kind = kind, groupId = groupId, addedAt = System.currentTimeMillis(),
+            createdHere = true, kind = kind, groupId = groupId, addedAt = System.currentTimeMillis(), sectioned = true,
         ).let { if (kind == SpaceKind.DIARY) it.copy(items = birthEntry(it).let { e -> mapOf(e.id to e) }) else it }
             .let { if (kind == SpaceKind.LIST) it.copy(items = templateHeadings(template).associateBy { h -> h.id }) else it }
         save(list)
@@ -322,7 +325,7 @@ class ListRepository(private val dir: File, private val identity: Identity) {
         group.syncedGroupName?.let { if (it != group.name) save(group.copy(name = it)) }
         assemblePhoto(group)
         val plan = planGroup(group, _lists.value)
-        plan.join.forEach { save(TodoList(it.listId, it.name, it.secret, kind = it.kind, groupId = groupId, addedAt = System.currentTimeMillis())) }
+        plan.join.forEach { save(TodoList(it.listId, it.name, it.secret, kind = it.kind, groupId = groupId, addedAt = System.currentTimeMillis(), sectioned = true)) }
         plan.update.forEach { save(it) }
         // Someone deleted a space from the group. Lists stay here, out of the group, and this phone is
         // asked whether to delete its copy too (the deleter's phone sends the same request in the list
@@ -345,7 +348,7 @@ class ListRepository(private val dir: File, private val identity: Identity) {
     /** Adds a shared list from an invite; returns the existing one if already joined. */
     suspend fun joinList(invite: Invite): TodoList = mutex.withLock {
         _lists.value[invite.listId]
-            ?: TodoList(invite.listId, invite.name, invite.secret, kind = invite.kind, addedAt = System.currentTimeMillis()).also { save(it) }
+            ?: TodoList(invite.listId, invite.name, invite.secret, kind = invite.kind, addedAt = System.currentTimeMillis(), sectioned = true).also { save(it) }
     }
 
     /** Shows or hides the list's headings on this phone. */
@@ -419,7 +422,7 @@ class ListRepository(private val dir: File, private val identity: Identity) {
                 createdAt = now,
                 version = Version(now, identity.deviceId),
                 editor = identity.deviceName,
-                pos = if (heading) (list.visibleItems.maxOfOrNull { it.position } ?: 0.0) + 1 else newItemPosition(list.visibleItems),
+                pos = if (heading) newHeadingPosition(list.visibleItems) else newItemPosition(list.visibleItems),
                 posVersion = Version(now, identity.deviceId),
                 heading = heading,
             )
@@ -435,38 +438,25 @@ class ListRepository(private val dir: File, private val identity: Identity) {
         }
     }
 
-    /** Moves an item to the end of [headingId]'s section, or above all headings with null. */
-    suspend fun moveToSection(listId: String, itemId: String, headingId: String?) {
-        val list = _lists.value[listId] ?: return
-        moveItem(listId, itemId, indexForSection(list.visibleItems, itemId, headingId))
+    /** Moves an item to the end of [headingId]'s section, or to the unsorted items above every heading with null. */
+    suspend fun moveToSection(listId: String, itemId: String, headingId: String?) = putLocal(listId) { list ->
+        val item = list.items[itemId]?.takeIf { !it.heading } ?: return@putLocal null
+        val (section, pos) = itemToSection(list.visibleItems, itemId, headingId)
+        item.moved(pos, identity.deviceId, System.currentTimeMillis(), section)
     }
 
-    /** Moves an item so it ends up at [toIndex] among the visible items. */
+    /** Moves an item so it ends up at [toIndex] among the visible items, in the section it lands in. */
     suspend fun moveItem(listId: String, itemId: String, toIndex: Int) = putLocal(listId) { list ->
-        val others = list.visibleItems.filter { it.id != itemId }
-        val item = list.items[itemId] ?: return@putLocal null
-        val index = toIndex.coerceIn(0, others.size)
-        val before = others.getOrNull(index - 1)?.position
-        val after = others.getOrNull(index)?.position
-        val pos = when {
-            before == null && after == null -> item.position
-            before == null -> after!! - 1
-            after == null -> before + 1
-            else -> (before + after) / 2
-        }
-        item.moved(pos, identity.deviceId, System.currentTimeMillis())
+        val item = list.items[itemId]?.takeIf { !it.heading } ?: return@putLocal null
+        val (section, pos) = itemMove(list.visibleItems, itemId, toIndex)
+        item.moved(pos, identity.deviceId, System.currentTimeMillis(), section)
     }
 
-    /** Moves a heading and everything under it together (see [sectionMove]). */
-    suspend fun moveSection(listId: String, headingId: String, dropIndex: Int): Unit = mutex.withLock {
-        val list = _lists.value[listId] ?: return
-        val now = System.currentTimeMillis()
-        val moved = sectionMove(list.visibleItems, headingId, dropIndex).mapNotNull { (id, pos) ->
-            list.items[id]?.takeIf { it.position != pos }?.moved(pos, identity.deviceId, now)
-        }
-        if (moved.isEmpty()) return
-        save(list.copy(items = list.items + moved.associateBy { it.id }))
-        moved.forEach { _localEdits.tryEmit(LocalEdit(listId, it, null, list.secret)) }
+    /** Moves a heading, and with it its section (see [headingMove]). */
+    suspend fun moveSection(listId: String, headingId: String, dropIndex: Int) = putLocal(listId) { list ->
+        val heading = list.items[headingId]?.takeIf { it.heading } ?: return@putLocal null
+        val pos = headingMove(list.visibleItems, headingId, dropIndex)?.takeIf { it != heading.position } ?: return@putLocal null
+        heading.moved(pos, identity.deviceId, System.currentTimeMillis())
     }
 
     /** Adds a diary entry on [date], optionally at [time] ("HH:mm"). */
@@ -627,6 +617,14 @@ class ListRepository(private val dir: File, private val identity: Identity) {
             runCatching { json.decodeFromString<TodoList>(f.readText()) }
                 .onFailure { Log.w("TwoDo", "Skipping unreadable list ${f.name}", it) }
                 .getOrNull()
+                ?.let { list -> if (list.sectioned) list else recordSections(list, f) }
         }.associateBy { it.id }
+    }
+
+    /** Once, for a list saved before items recorded their section: works them out, and saves. */
+    private fun recordSections(list: TodoList, file: File): TodoList {
+        val updated = list.copy(items = if (list.kind == SpaceKind.LIST) sectionsFromPositions(list.items) else list.items, sectioned = true)
+        runCatching { file.writeText(json.encodeToString(updated)) }
+        return updated
     }
 }

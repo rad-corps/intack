@@ -5,6 +5,21 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+**Items always stay under their heading.** Each item now remembers which heading it's under, so moving
+a heading always brings its items, even if someone adds or moves items in that section at the same
+moment on another phone. Everyone in a list needs this version for headings to show right.
+
+**See where an item will land.** While you drag an item, the heading of the section it's about to join
+lights up.
+
+**Fixes**
+- Someone who'd just changed their name could still show up under their old name (or their phone's
+  model) on other phones. And a phone that hasn't been given a name yet no longer announces its model;
+  it shows as "Someone new".
+- Going back from a list in a group returns to the Lists tab, not the calendar.
+- Leaving a group goes to the home screen.
+- A list with only headings says "Nothing on it yet" rather than "All done".
+
 ## v0.6.23 — 2026-10-12
 
 **No more "Unknown device".** For a moment after connecting, before the other phone has said who it

@@ -139,7 +139,26 @@ class SyncManager(context: Context, private val repo: ListRepository, private va
     /** Colours others have chosen, by device id. */
     val colors: StateFlow<Map<String, Long>> = _colors.asStateFlow()
 
-    private fun hello(wantFull: Boolean = false) = SyncMessage.Hello(identity.deviceId, identity.deviceName, wantFull, identity.myColor)
+    /** Says who this phone is; the name is blank until the user has given one (rather than the phone's model). */
+    private fun hello(wantFull: Boolean = false) =
+        SyncMessage.Hello(identity.deviceId, if (identity.hasName) identity.deviceName else "", wantFull, identity.myColor)
+
+    /** When (unix seconds) the newest hello we've taken each device's name from was sent. */
+    private val nameSentAt = mutableMapOf<String, Long>()
+
+    /**
+     * What to call the sender of [hello], sent at [sentAt]: the name in it if it's the newest we've
+     * seen from them (relays hand back stored hellos newest first, so an older one can arrive after a
+     * rename), otherwise the name we already know. Remembers them when their hello is the newest.
+     */
+    private fun nameFrom(hello: SyncMessage.Hello, sentAt: Long): String {
+        val known = _names.value[hello.deviceId]
+        val newest = hello.deviceName.isNotBlank() && sentAt >= (nameSentAt[hello.deviceId] ?: 0)
+        if (!newest) return known ?: hello.deviceName.ifBlank { SOMEONE_NEW }
+        nameSentAt[hello.deviceId] = sentAt
+        rememberPerson(hello)
+        return hello.deviceName
+    }
 
     /** Remembers who someone is: their latest name and, if they've chosen one, their colour. */
     private fun rememberPerson(hello: SyncMessage.Hello) {
@@ -307,10 +326,10 @@ class SyncManager(context: Context, private val repo: ListRepository, private va
         when (message) {
             is SyncMessage.Hello -> {
                 if (message.deviceId == identity.deviceId) return
-                relayList.seen[message.deviceId] = message.deviceName to SystemClock.elapsedRealtime()
-                rememberPerson(message)
-                val member = repo.recordMember(listId, message.deviceId, message.deviceName)
-                if (member.worthAnnouncing && !inGroup(listId)) _events.tryEmit(ListEvent.Joined(listId, listName(listId), message.deviceName))
+                val name = nameFrom(message, event.created_at)
+                relayList.seen[message.deviceId] = name to SystemClock.elapsedRealtime()
+                val member = repo.recordMember(listId, message.deviceId, name)
+                if (member.worthAnnouncing && !inGroup(listId)) _events.tryEmit(ListEvent.Joined(listId, listName(listId), name))
                 val fresh = age < FRESH_HELLO_S
                 if (message.wantFull && fresh) sendFullViaRelays(relayList, message.deviceName)
                 // Still waiting for the whole list and someone new is around: ask them.
@@ -437,14 +456,14 @@ class SyncManager(context: Context, private val repo: ListRepository, private va
         }
         when (message) {
             is SyncMessage.Hello -> {
-                peer.deviceName = message.deviceName
+                val name = nameFrom(message, System.currentTimeMillis() / 1000)
+                peer.deviceName = name
                 // Seen through the relays under an older name? Keep one name per person.
-                relayLists[swarm.listId]?.seen?.computeIfPresent(message.deviceId) { _, (_, at) -> message.deviceName to at }
-                rememberPerson(message)
-                val member = repo.recordMember(swarm.listId, message.deviceId, message.deviceName)
+                relayLists[swarm.listId]?.seen?.computeIfPresent(message.deviceId) { _, (_, at) -> name to at }
+                val member = repo.recordMember(swarm.listId, message.deviceId, name)
                 if (member.firstContact) firstSyncPeers += peer
                 if (member.worthAnnouncing && !inGroup(swarm.listId)) {
-                    _events.tryEmit(ListEvent.Joined(swarm.listId, listName(swarm.listId), message.deviceName))
+                    _events.tryEmit(ListEvent.Joined(swarm.listId, listName(swarm.listId), name))
                 }
                 publishStatus()
             }
@@ -597,6 +616,8 @@ class SyncManager(context: Context, private val repo: ListRepository, private va
 
     private companion object {
         const val TAG = "TwoDo"
+        /** For someone who hasn't given their name yet. */
+        const val SOMEONE_NEW = "Someone new"
         // Items up to ~100 KB of JSON and ~150 bytes per audit entry keep each chunk well under the ~256 KB limit.
         const val DIRECT_CHUNK_BYTES = 100_000
         const val AUDIT_PER_MESSAGE = 200

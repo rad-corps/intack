@@ -13,9 +13,9 @@ fun Item.edited(deviceId: String, deviceName: String, now: Long, change: Item.()
     )
 }
 
-/** Returns this item moved to [pos]; doesn't create a content version. */
-fun Item.moved(pos: Double, deviceId: String, now: Long): Item =
-    copy(pos = pos, posVersion = Version(maxOf(now, (posVersion?.ts ?: 0) + 1), deviceId))
+/** Returns this item moved to [pos] (in [section]); doesn't create a content version. */
+fun Item.moved(pos: Double, deviceId: String, now: Long, section: String? = this.section): Item =
+    copy(pos = pos, section = section, posVersion = Version(maxOf(now, (posVersion?.ts ?: 0) + 1), deviceId))
 
 private fun Item.sameContentAs(other: Item) =
     text == other.text && checked == other.checked && deleted == other.deleted && date == other.date && time == other.time
@@ -59,9 +59,9 @@ fun TodoList.merge(remote: Collection<Item>): MergeResult {
                 winner
             }
         }
-        // Position is merged on its own: the latest move wins, silently.
+        // Position (and section) is merged on its own: the latest move wins, silently.
         val latestMove = maxOf(l, r, compareBy(nullsFirst()) { it.posVersion })
-        merged = merged.copy(pos = latestMove.pos, posVersion = latestMove.posVersion)
+        merged = merged.copy(pos = latestMove.pos, posVersion = latestMove.posVersion, section = latestMove.section)
         if (merged != l) {
             items[r.id] = merged
             accepted += merged

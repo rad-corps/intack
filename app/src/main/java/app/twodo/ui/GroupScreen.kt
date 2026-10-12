@@ -165,7 +165,7 @@ internal fun GroupScreen(
                     EmptyState(if (group.isJoining) "The calendar will appear once you've joined." else "No calendar yet.")
                 }
                 GroupTab.LISTS -> ListsTab(app, group, lists, onOpenSpace)
-                GroupTab.SETTINGS -> GroupSettingsTab(app, group, groupStatus, names, onInvite = { inviting = true }, onLeft = navigation.onOtherLists)
+                GroupTab.SETTINGS -> GroupSettingsTab(app, group, groupStatus, names, onInvite = { inviting = true }, onLeft = navigation.onHome)
             }
         }
     }
@@ -350,7 +350,9 @@ private fun ListsTab(app: TwoDoApp, group: TodoList, lists: Map<String, TodoList
 private fun toDoSummary(list: TodoList): String {
     if (list.isJoining) return "Getting it…"
     if (list.archived) return "Archived · not syncing"
-    val left = list.visibleItems.count { !it.checked && !it.heading }
+    val things = list.visibleItems.filter { !it.heading }
+    if (things.isEmpty()) return "Nothing on it yet"
+    val left = things.count { !it.checked }
     return when (left) {
         0 -> "All done"
         1 -> "1 thing to do"

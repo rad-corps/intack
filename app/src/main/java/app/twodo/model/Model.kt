@@ -26,10 +26,13 @@ data class Item(
     val history: List<Version> = emptyList(),
     /**
      * Manual sort position. Synced as its own last-writer-wins value (stamped by [posVersion]) so that
-     * moving an item never conflicts with someone ticking it.
+     * moving an item never conflicts with someone ticking it. Orders items within their section, and
+     * headings among headings (see Sections.kt).
      */
     val pos: Double? = null,
     val posVersion: Version? = null,
+    /** The heading this item is under (its id); null above every heading. Moves with [pos]. */
+    val section: String? = null,
     /** Diary entries: the day (ISO yyyy-MM-dd) and optional time (HH:mm). Null for list items. */
     val date: String? = null,
     val time: String? = null,
@@ -109,9 +112,12 @@ data class TodoList(
     val look: Look? = null,
     /** Local only: show the items without their headings on this phone. */
     val hideHeadings: Boolean = false,
+    /** Local only: items record their section; false for lists saved before they did (see [sectionsFromPositions]). */
+    val sectioned: Boolean = false,
 ) {
+    /** Items in the order they're shown: unsorted ones, then each heading with its items. */
     val visibleItems: List<Item>
-        get() = items.values.filter { !it.deleted }.sortedWith(compareBy({ it.position }, { it.id }))
+        get() = sectionedOrder(items.values.filter { !it.deleted })
 }
 
 /**

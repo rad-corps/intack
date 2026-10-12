@@ -104,6 +104,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -175,6 +176,7 @@ fun TwoDoRoot(
     var openSpaceId by rememberSaveable { mutableStateOf<String?>(null) }
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val groupStates = rememberSaveableStateHolder()
     var newGroup by remember { mutableStateOf(false) }
     var joining by remember { mutableStateOf(false) }
     var settings by remember { mutableStateOf(false) }
@@ -284,7 +286,10 @@ fun TwoDoRoot(
                 }
             }
             home -> HomeScreen(app, lists, others, calendarSources(calendars), status, snackbar, navigation, onOpen = ::open)
-            group != null -> GroupScreen(app, group, lists, status, snackbar, navigation, onOpenSpace = { openSpaceId = it })
+            // Kept per group while a list is open on top, so coming back finds the same tab.
+            group != null -> groupStates.SaveableStateProvider(group.id) {
+                GroupScreen(app, group, lists, status, snackbar, navigation, onOpenSpace = { openSpaceId = it })
+            }
             allCalendars -> AllCalendarsScreen(app, calendars, navigation)
             else -> ListsScreen(app, others, status, snackbar, appTheme, navigation, onOpen = { openSpaceId = it })
         }
@@ -600,6 +605,9 @@ internal fun ListBody(app: TwoDoApp, list: TodoList, status: SyncStatus, modifie
         // Local copy so dragging is smooth; committed to the repository when the drag ends.
         val shown = if (list.hideHeadings) list.visibleItems.filter { !it.heading } else list.visibleItems
         var ordered by remember(shown) { mutableStateOf(shown) }
+        // The item being dragged: the heading of the section it would land in lights up.
+        var dragging by remember { mutableStateOf<String?>(null) }
+        val target = dragging?.let { id -> sectionOf(ordered, id)?.id }
         val listState = rememberLazyListState()
         val reorderState = rememberReorderableLazyListState(listState) { from, to ->
             ordered = ordered.toMutableList().apply { add(to.index, removeAt(from.index)) }
@@ -614,8 +622,12 @@ internal fun ListBody(app: TwoDoApp, list: TodoList, status: SyncStatus, modifie
             items(ordered, key = { it.id }) { item ->
                 ReorderableItem(reorderState, key = item.id) {
                     val background by animateColorAsState(
-                        if (item.id in highlighted) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
-                        animationSpec = tween(600),
+                        when {
+                            item.id == target -> MaterialTheme.colorScheme.secondaryContainer
+                            item.id in highlighted -> MaterialTheme.colorScheme.primaryContainer
+                            else -> MaterialTheme.colorScheme.surface
+                        },
+                        animationSpec = tween(if (dragging != null) 150 else 600),
                         label = "highlight",
                     )
                     val dragHandle = if (item.heading) {
@@ -631,11 +643,15 @@ internal fun ListBody(app: TwoDoApp, list: TodoList, status: SyncStatus, modifie
                             },
                         )
                     } else {
-                        Modifier.draggableHandle(onDragStopped = {
-                            val index = ordered.indexOfFirst { it.id == item.id }
-                            val target = if (list.hideHeadings) indexAmongAll(list.visibleItems, ordered, item.id, index) else index
-                            scope.launch { app.repo.moveItem(list.id, item.id, target) }
-                        })
+                        Modifier.draggableHandle(
+                            onDragStarted = { dragging = item.id },
+                            onDragStopped = {
+                                dragging = null
+                                val index = ordered.indexOfFirst { it.id == item.id }
+                                val drop = if (list.hideHeadings) indexAmongAll(list.visibleItems, ordered, item.id, index) else index
+                                scope.launch { app.repo.moveItem(list.id, item.id, drop) }
+                            },
+                        )
                     }
                     if (item.heading) {
                         // A section heading: bold, no checkbox; tap to rename or delete.
