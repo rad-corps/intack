@@ -62,6 +62,8 @@ import app.twodo.model.Look
 import app.twodo.model.TodoList
 import app.twodo.model.hasSharedLook
 import app.twodo.model.PhotoChoice
+import app.twodo.model.StarterTheme
+import app.twodo.model.STARTER_THEMES
 import app.twodo.R
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -325,12 +327,11 @@ private fun LookEditorDialog(
                 }
                 Spacer(Modifier.height(16.dp))
 
-                StyleOptions(style, preview.theme.colors) { style = it }
-                Spacer(Modifier.height(16.dp))
-
                 // The code can name a built-in background (one of the user's own photos can't be written out).
                 val builtin = selectedId?.takeIf { isBuiltin(it) }
-                ThemeCodeBox(candidate.copy(photoId = builtin)) { result ->
+
+                /** Takes on a whole look from theme code: a starter theme, or the user's own. */
+                fun apply(result: Look) {
                     // Background first: choosing one resets the colours to suit it, and the code's colours win.
                     val photoId = result.photoId
                     if (photoId != builtin && !(photoId == null && selectedId == OWN_PHOTO)) {
@@ -347,6 +348,21 @@ private fun LookEditorDialog(
                     strength = result.photoStrength
                     style = result.style
                 }
+
+                Label("Starter themes")
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    items(STARTER_THEMES, key = { it.name }) { starter ->
+                        StarterTile(starter) {
+                            apply(parseThemeCode(starter.code, candidate.copy(photoId = builtin), THEMES.map { it.id }.toSet()).look)
+                        }
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+
+                StyleOptions(style, preview.theme.colors) { style = it }
+                Spacer(Modifier.height(16.dp))
+
+                ThemeCodeBox(candidate.copy(photoId = builtin), ::apply)
             }
           }
         },
@@ -634,3 +650,22 @@ private fun ThemeCodeBox(look: Look, onApply: (Look) -> Unit) {
     }
 }
 
+
+/** A starter theme: its colours in miniature, and its name. */
+@Composable
+private fun StarterTile(starter: StarterTheme, onClick: () -> Unit) {
+    val colors = starter.swatch.map { Color(it) }
+    val shape = RoundedCornerShape(12.dp)
+    Column(Modifier.width(88.dp).clip(shape).clickable(onClick = onClick), horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(
+            Modifier.fillMaxWidth().height(56.dp).clip(shape).background(colors.firstOrNull() ?: MaterialTheme.colorScheme.surfaceVariant)
+                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, shape)
+                .padding(10.dp),
+        ) {
+            Row(Modifier.align(Alignment.BottomStart), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                colors.drop(1).forEach { Box(Modifier.size(14.dp).clip(CircleShape).background(it)) }
+            }
+        }
+        Text(starter.name, style = MaterialTheme.typography.labelSmall, maxLines = 1, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
+    }
+}

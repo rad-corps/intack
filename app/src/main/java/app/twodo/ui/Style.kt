@@ -121,8 +121,11 @@ fun Modifier.listRow(style: ResolvedStyle, fill: Color, cardColor: Color): Modif
         .styledBorder(style)
     ITEMS_LINES -> background(style.itemColor?.takeIf { fill == Color.Transparent || fill == Color.Unspecified } ?: fill)
         .drawBehind {
-            val y = size.height - 0.5.dp.toPx()
-            drawLine(style.borderColor.copy(alpha = 0.6f), Offset(16.dp.toPx(), y), Offset(size.width - 16.dp.toPx(), y), 1.dp.toPx())
+            // As thick as the border, if one is set (otherwise a hairline), and that solid when it's thick.
+            val width = style.borderWidth.coerceAtLeast(1.dp).toPx()
+            val y = size.height - width / 2
+            val colour = if (style.borderWidth > 1.dp) style.borderColor else style.borderColor.copy(alpha = 0.6f)
+            drawLine(colour, Offset(16.dp.toPx(), y), Offset(size.width - 16.dp.toPx(), y), width)
         }
     else -> background(style.itemColor?.takeIf { fill == Color.Transparent || fill == Color.Unspecified } ?: fill)
 }

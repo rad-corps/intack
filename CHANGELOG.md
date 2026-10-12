@@ -5,6 +5,19 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+**Starter themes.** Not sure where to begin? The Look editor now has six ready-made themes, each a
+single tap:
+- **Cyberdeck:** LED green on black, like an old desktop media player.
+- **Woodland:** forest greens and bark browns.
+- **Constructivist:** red and black on aged paper, with bold rules.
+- **Sunshine:** bright and cheerful.
+- **Sky Hills:** a big blue sky with grassy green.
+- **Party:** hot pink and purple disco.
+
+Each one is just theme code, so open the code afterwards to see what it set and tweak it.
+
+The "Lines" item style now uses the border thickness, so lines can be bold.
+
 ## v0.6.27 — 2026-10-13
 
 **Make it yours.** The Look editor has a new Style section:
