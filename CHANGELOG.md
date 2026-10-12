@@ -5,6 +5,8 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+## v0.6.26 — 2026-10-13
+
 **A tidier look editor.** All the backgrounds are now in one row you swipe through, with each group
 (Soft colours, Yours, Home, Nature, Seasons) marked by a slim divider with its name. The preview stays
 in view while you choose. It opens on your current background.
