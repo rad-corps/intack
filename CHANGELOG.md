@@ -5,6 +5,14 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+**A tidier look editor.** All the backgrounds are now in one row you swipe through, with each group
+(Soft colours, Yours, Home, Nature, Seasons) marked by a slim divider with its name. The preview stays
+in view while you choose. It opens on your current background.
+
+**16 soft colours, first in line.** Twelve new colour washes (Blush, Peach, Butter, Sand, Mint, Sky,
+Mist, Lilac, Ocean, Moss, Plum and Ember) join Dawn, Sage, Lagoon and Dusk, which are a little
+smoother now. Light ones come first, then dark.
+
 ## v0.6.25 — 2026-10-12
 
 **Dragging headings fixed properly.** Moving a heading a second time could put it in the wrong place

@@ -66,6 +66,11 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.runtime.produceState
 import app.twodo.model.sharedLook
 import android.graphics.BitmapFactory
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.unit.Constraints
 import kotlinx.coroutines.launch
 
 /** Edits a group's look: everyone in it sees the same. */
@@ -203,21 +208,50 @@ private fun LookEditorDialog(
                 Spacer(Modifier.height(16.dp))
 
                 Label("Background")
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    item { BackgroundTile("None", null, selectedId == null) { choose(PhotoChoice.None, null) } }
-                    item {
-                        BackgroundTile(if (loading) "Loading…" else "Your photo", if (selectedId == OWN_PHOTO) photo else null, selectedId == OWN_PHOTO, icon = Icons.Outlined.Image) {
-                            picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                // One row for everything, so the preview above stays in sight; a labelled bookend starts each group.
+                val strip = remember {
+                    buildList {
+                        fun category(it: BackgroundCategory) {
+                            add(StripEntry.Bookend(it.name))
+                            it.backgrounds.forEach { b -> add(StripEntry.Builtin(b)) }
                         }
+                        add(StripEntry.Bookend("None"))
+                        add(StripEntry.NoBackground)
+                        // The soft colours first: the most usable.
+                        category(BACKGROUNDS.first())
+                        add(StripEntry.Bookend("Yours"))
+                        add(StripEntry.OwnPhoto)
+                        BACKGROUNDS.drop(1).forEach(::category)
                     }
                 }
-                BACKGROUNDS.forEach { category ->
-                    Text(category.name, Modifier.padding(top = 10.dp, bottom = 4.dp), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items(category.backgrounds, key = { it.id }) { background ->
-                            val thumbnail by produceState<ImageBitmap?>(null, background.id) { value = loadBackground(context, background.id, sample = 8) }
-                            BackgroundTile(background.name, thumbnail, selectedId == background.photoId) {
-                                scope.launch { choose(PhotoChoice.Builtin(background.photoId), loadBackground(context, background.id)) }
+                // Open on the current choice.
+                val stripState = rememberLazyListState(
+                    initialFirstVisibleItemIndex = strip.indexOfFirst {
+                        when (it) {
+                            StripEntry.NoBackground -> saved.photoId == null
+                            StripEntry.OwnPhoto -> saved.photoId != null && !isBuiltin(saved.photoId)
+                            is StripEntry.Builtin -> it.background.photoId == saved.photoId
+                            is StripEntry.Bookend -> false
+                        }
+                    }.let { (it - 1).coerceAtLeast(0) },
+                )
+                LazyRow(state = stripState, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(strip, key = { it.key }) { entry ->
+                        when (entry) {
+                            is StripEntry.Bookend -> Bookend(entry.name)
+                            StripEntry.NoBackground -> BackgroundTile("None", null, selectedId == null) { choose(PhotoChoice.None, null) }
+                            StripEntry.OwnPhoto -> BackgroundTile(
+                                if (loading) "Loading…" else "Your photo",
+                                if (selectedId == OWN_PHOTO) photo else null,
+                                selectedId == OWN_PHOTO,
+                                icon = Icons.Outlined.Image,
+                            ) { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
+                            is StripEntry.Builtin -> {
+                                val background = entry.background
+                                val thumbnail by produceState<ImageBitmap?>(null, background.id) { value = loadBackground(context, background.id, sample = 8) }
+                                BackgroundTile(background.name, thumbnail, selectedId == background.photoId) {
+                                    scope.launch { choose(PhotoChoice.Builtin(background.photoId), loadBackground(context, background.id)) }
+                                }
                             }
                         }
                     }
@@ -274,6 +308,50 @@ private fun LookEditorDialog(
 }
 
 private const val OWN_PHOTO = "own"
+
+/** What's in the row of backgrounds: the choices, and a bookend starting each group. */
+private sealed interface StripEntry {
+    val key: String
+
+    class Bookend(val name: String) : StripEntry {
+        override val key get() = "bookend:$name"
+    }
+
+    data object NoBackground : StripEntry {
+        override val key get() = "none"
+    }
+
+    data object OwnPhoto : StripEntry {
+        override val key get() = OWN_PHOTO
+    }
+
+    class Builtin(val background: Background) : StripEntry {
+        override val key get() = background.photoId
+    }
+}
+
+/** A thin upright divider with the group's name running up it, as tall as the tiles. */
+@Composable
+private fun Bookend(name: String) {
+    Row(Modifier.height(100.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.width(1.dp).fillMaxHeight().background(MaterialTheme.colorScheme.outlineVariant))
+        Text(
+            name,
+            Modifier.padding(start = 2.dp).upright(),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.primary,
+            maxLines = 1,
+        )
+    }
+}
+
+/** Turns content a quarter-turn anticlockwise, so it reads bottom to top, taking up its rotated space. */
+private fun Modifier.upright(): Modifier = layout { measurable, _ ->
+    val placeable = measurable.measure(Constraints())
+    layout(placeable.height, placeable.width) {
+        placeable.place(-(placeable.width - placeable.height) / 2, (placeable.width - placeable.height) / 2)
+    }
+}.rotate(-90f)
 
 /** One choice of background: a portrait thumbnail with its name under it. */
 @Composable

@@ -18,7 +18,15 @@ class Background(val id: String, val name: String) {
 
 class BackgroundCategory(val name: String, val backgrounds: List<Background>)
 
+private fun soft(vararg names: String) = names.map { Background("abstract-${it.lowercase()}", it) }
+
 val BACKGROUNDS = listOf(
+    // First: calm behind any list, and they suit both light and dark colours.
+    BackgroundCategory(
+        "Soft colours",
+        soft("Dawn", "Blush", "Peach", "Butter", "Sand", "Sage", "Mint", "Sky", "Mist", "Lilac") +
+            soft("Lagoon", "Ocean", "Moss", "Dusk", "Plum", "Ember"),
+    ),
     BackgroundCategory(
         "Home",
         listOf(Background("cork", "Corkboard"), Background("notepaper", "Notepaper"), Background("grid-paper", "Grid paper"), Background("linen", "Linen")),
@@ -30,10 +38,6 @@ val BACKGROUNDS = listOf(
     BackgroundCategory(
         "Seasons",
         listOf(Background("spring", "Spring"), Background("summer", "Summer"), Background("autumn", "Autumn"), Background("winter", "Winter")),
-    ),
-    BackgroundCategory(
-        "Soft colours",
-        listOf(Background("abstract-dawn", "Dawn"), Background("abstract-sage", "Sage"), Background("abstract-lagoon", "Lagoon"), Background("abstract-dusk", "Dusk")),
     ),
 )
 
