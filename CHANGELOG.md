@@ -5,6 +5,8 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+## v0.6.29 — 2026-10-13
+
 **Sky Hills goes retro.** The Sky Hills starter theme now has its own pixel-art background: a deep
 blue sky with blocky clouds above a grassy edge and brown checkerboard ground. Its cards are now navy
 with grass-green edges, and its headings gold. The background is also available on its own as
