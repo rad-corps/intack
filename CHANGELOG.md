@@ -5,6 +5,8 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+## v0.6.25 — 2026-10-12
+
 **Dragging headings fixed properly.** Moving a heading a second time could put it in the wrong place
 and leave the list looking jumbled; that's fixed. While you drag a heading, its items now travel with
 it as one block, so you can see the whole section move. A heading dropped in the middle of another
