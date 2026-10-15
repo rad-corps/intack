@@ -144,6 +144,10 @@ class Identity(context: Context) {
         get() = flag("notifyGroupChanges", notifyChanges)
         set(value) = setFlag("notifyGroupChanges", value)
 
+    var notifyMessages: Boolean
+        get() = flag("notifyMessages", true)
+        set(value) = setFlag("notifyMessages", value)
+
     var notifyConflicts: Boolean
         get() = flag("notifyConflicts", true)
         set(value) = setFlag("notifyConflicts", value)

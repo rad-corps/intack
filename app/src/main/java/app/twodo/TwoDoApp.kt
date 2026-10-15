@@ -103,6 +103,7 @@ class TwoDoApp : Application() {
             SpaceKind.DIARY -> if (added) identity.notifyCalendarAdded else identity.notifyCalendarChanged
             SpaceKind.LIST -> if (added) identity.notifyListAdded else identity.notifyListTicked
             SpaceKind.GROUP -> identity.notifyGroupChanges
+            SpaceKind.CHAT -> identity.notifyMessages
         }
     }
 

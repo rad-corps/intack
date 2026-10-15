@@ -21,7 +21,8 @@ object ShareLink {
             when (list.kind) {
                 SpaceKind.DIARY -> "&t=diary"
                 SpaceKind.GROUP -> "&t=group"
-                SpaceKind.LIST -> ""
+                // Messages are only ever shared with their group, never by a link of their own.
+                SpaceKind.LIST, SpaceKind.CHAT -> ""
             }
 
     /** Message text to send along with the link; [appName] is the product name. */

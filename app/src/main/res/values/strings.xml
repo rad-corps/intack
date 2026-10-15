@@ -14,6 +14,7 @@
     <string name="channel_calendar">Calendar changes</string>
     <string name="channel_schedule">Daily schedule</string>
     <string name="channel_reminders">Reminders</string>
+    <string name="channel_messages">Messages</string>
     <string name="conflict_title">Conflicting edits in %1$s</string>
     <string name="sync_service_title">Keeping lists in sync</string>
     <string name="sync_service_text">Connected so other devices can reach this one</string>

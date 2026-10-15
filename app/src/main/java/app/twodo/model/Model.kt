@@ -44,6 +44,11 @@ data class Item(
     val spaceSecret: String? = null,
     val spaceKind: SpaceKind? = null,
     /**
+     * Group entries: the space is the group's messages (see [SpaceKind.CHAT]). Its [spaceKind] says LIST,
+     * so versions without messages show it as a list instead of failing on it.
+     */
+    val chat: Boolean = false,
+    /**
      * A section heading in a list ("Dairy"), not something to tick. Items below it, up to the next
      * heading, are in its section. Older versions ignore this and show it as an item.
      */
@@ -81,6 +86,12 @@ enum class SpaceKind {
     @SerialName("diary") DIARY,
     /** A set of people sharing a calendar and lists; its items are the spaces in it. */
     @SerialName("group") GROUP,
+    /**
+     * A group's messages: each item is one message. Only ever this phone's own record of a space; a
+     * group announces it as a LIST with [Item.chat] set, because versions without messages would fail
+     * on a kind they don't know.
+     */
+    @SerialName("chat") CHAT,
 }
 
 @Serializable
@@ -121,6 +132,8 @@ data class TodoList(
     val hideHeadings: Boolean = false,
     /** Local only: items record their section; false for lists saved before they did (see [sectionsFromPositions]). */
     val sectioned: Boolean = false,
+    /** Local only, for messages: the newest message this phone has shown (its createdAt), for the unread count. */
+    val readUpTo: Long = 0,
 ) {
     /** Items in the order they're shown: unsorted ones, then each heading with its items. */
     val visibleItems: List<Item>

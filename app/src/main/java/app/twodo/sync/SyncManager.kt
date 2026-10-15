@@ -505,13 +505,17 @@ class SyncManager(context: Context, private val repo: ListRepository, private va
     private fun announceChanges(listId: String, changes: List<Pair<Item?, Item>>) {
         val kind = repo.lists.value[listId]?.kind ?: SpaceKind.LIST
         changes.mapNotNull { (before, after) ->
+            // A message is announced as itself, and only when it arrives.
+            if (kind == SpaceKind.CHAT) {
+                return@mapNotNull if (before == null && !after.deleted) Described(after, after.text, true, after.version.by) else null
+            }
             describeChange(before, after)?.let { Described(after, it, !after.deleted && (before == null || before.deleted), changeVersion(before, after).by) }
         }
             .groupBy { _names.value[it.by] ?: it.item.editor }
             .forEach { (who, described) ->
                 _events.tryEmit(
                     ListEvent.Changed(
-                        listId, listName(listId), who,
+                        listId, if (kind == SpaceKind.CHAT) chatTitle(listId) else listName(listId), who,
                         lines = described.map { it.line },
                         itemIds = described.map { it.item.id },
                         added = described.map { it.added },
@@ -525,6 +529,9 @@ class SyncManager(context: Context, private val repo: ListRepository, private va
     private data class Described(val item: Item, val line: String, val added: Boolean, val by: String)
 
     private fun listName(listId: String) = repo.lists.value[listId]?.name ?: "a list"
+
+    /** "Messages · Family": a group's messages are named after the group. */
+    private fun chatTitle(chatId: String) = "Messages · " + (repo.lists.value[chatId]?.groupId?.let { repo.lists.value[it]?.name } ?: listName(chatId))
 
     /** Spaces in a group: people joining and leaving are announced once, for the group. */
     private fun inGroup(listId: String) = repo.lists.value[listId]?.groupId != null

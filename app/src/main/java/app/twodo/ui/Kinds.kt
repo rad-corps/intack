@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Checklist
+import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
@@ -25,6 +26,7 @@ val SpaceKind.icon: ImageVector
         SpaceKind.LIST -> Icons.Outlined.Checklist
         SpaceKind.DIARY -> Icons.Outlined.CalendarMonth
         SpaceKind.GROUP -> Icons.Outlined.Groups
+        SpaceKind.CHAT -> Icons.Outlined.Forum
     }
 
 val SpaceKind.label: String get() = label(inGroup = false)
@@ -34,6 +36,7 @@ fun SpaceKind.label(inGroup: Boolean): String = when (this) {
     SpaceKind.LIST -> "List"
     SpaceKind.DIARY -> if (inGroup) "Calendar" else "Diary"
     SpaceKind.GROUP -> "Group"
+    SpaceKind.CHAT -> "Messages"
 }
 
 /** The list's own theme, or [appTheme] if it follows the app. */

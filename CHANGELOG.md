@@ -5,6 +5,11 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+**Messages.** Each group has a Messages tab: a conversation for everyone in the group, newest at
+the bottom. A badge on the tab counts messages you haven't seen, and new messages come as
+notifications (turn them off under Notifications › Messages). Everyone in the group needs this
+version: older versions show the messages as a list called "Messages".
+
 ## v0.6.32 — 2026-10-15
 
 **Tidier Lists tab.** The "Move a list into …" link under New list is gone.

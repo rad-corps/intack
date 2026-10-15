@@ -15,7 +15,16 @@ val TodoList.spaceRefs: List<Item>
 /** The group's calendar: its oldest diary. Groups have one; if two were ever made, the first one counts. */
 val TodoList.calendarRef: Item? get() = spaceRefs.firstOrNull { it.spaceKind == SpaceKind.DIARY }
 
-val TodoList.listRefs: List<Item> get() = spaceRefs.filter { it.spaceKind == SpaceKind.LIST }
+val TodoList.listRefs: List<Item> get() = spaceRefs.filter { it.effectiveSpaceKind == SpaceKind.LIST }
+
+/**
+ * The group's messages: normally one space, made by whoever sends the first message. If two people did
+ * that at once there are two; messages show from both, and new ones go to the oldest.
+ */
+val TodoList.chatRefs: List<Item> get() = spaceRefs.filter { it.effectiveSpaceKind == SpaceKind.CHAT }
+
+/** What a group entry's space really is: [Item.chat] marks the messages, announced as a list. */
+val Item.effectiveSpaceKind: SpaceKind? get() = if (chat) SpaceKind.CHAT else spaceKind
 
 /** The group's synced name, if anyone has set one. */
 val TodoList.syncedGroupName: String? get() = items[GROUP_NAME_ITEM]?.takeIf { !it.deleted }?.text
@@ -23,7 +32,7 @@ val TodoList.syncedGroupName: String? get() = items[GROUP_NAME_ITEM]?.takeIf { !
 fun Item.toInvite(): Invite? {
     val id = spaceId ?: return null
     val secret = spaceSecret ?: return null
-    return Invite(id, text, secret, spaceKind ?: SpaceKind.LIST)
+    return Invite(id, text, secret, effectiveSpaceKind ?: SpaceKind.LIST)
 }
 
 /** What this phone should change so its spaces match [group]. */
@@ -47,7 +56,9 @@ fun planGroup(group: TodoList, lists: Map<String, TodoList>): GroupPlan {
         when {
             item.deleted -> if (local?.groupId == group.id) remove += spaceId
             local == null -> item.toInvite()?.let { join += it }
-            local.groupId != group.id || local.name != item.text -> update += local.copy(groupId = group.id, name = item.text)
+            // A phone that joined the messages on a version without them has it as a list; it becomes messages.
+            local.groupId != group.id || local.name != item.text || (item.chat && local.kind != SpaceKind.CHAT) ->
+                update += local.copy(groupId = group.id, name = item.text, kind = if (item.chat) SpaceKind.CHAT else local.kind)
         }
     }
     return GroupPlan(join, update, remove)

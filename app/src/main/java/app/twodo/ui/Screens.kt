@@ -177,6 +177,8 @@ fun TwoDoRoot(
     // The group on screen (or OTHER_LISTS), and a list or diary opened on top of it.
     var view by rememberSaveable { mutableStateOf(app.identity.lastView) }
     var openSpaceId by rememberSaveable { mutableStateOf<String?>(null) }
+    // A tab the group on screen should switch to (from a notification).
+    var groupTab by remember { mutableStateOf<GroupTab?>(null) }
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val groupStates = rememberSaveableStateHolder()
@@ -203,8 +205,9 @@ fun TwoDoRoot(
             list.kind == SpaceKind.GROUP -> show(list.id)
             list.groupId != null -> {
                 show(list.groupId)
-                // The calendar is the group's first tab; lists open on top.
+                // The calendar is the group's first tab; lists open on top; messages have their own tab.
                 if (list.kind == SpaceKind.LIST) openSpaceId = list.id
+                if (list.kind == SpaceKind.CHAT) groupTab = GroupTab.MESSAGES
             }
             else -> {
                 show(OTHER_LISTS)
@@ -291,7 +294,10 @@ fun TwoDoRoot(
             home -> HomeScreen(app, lists, others, calendarSources(calendars), status, snackbar, navigation, onOpen = ::open)
             // Kept per group while a list is open on top, so coming back finds the same tab.
             group != null -> groupStates.SaveableStateProvider(group.id) {
-                GroupScreen(app, group, lists, status, snackbar, navigation, onOpenSpace = { openSpaceId = it })
+                GroupScreen(
+                    app, group, lists, status, snackbar, navigation, onOpenSpace = { openSpaceId = it },
+                    tabRequest = groupTab, onTabHandled = { groupTab = null },
+                )
             }
             allCalendars -> AllCalendarsScreen(app, calendars, navigation)
             else -> ListsScreen(app, others, status, snackbar, appTheme, navigation, onOpen = { openSpaceId = it })
@@ -1317,6 +1323,7 @@ internal fun JoiningBanner(list: TodoList, status: SyncStatus) {
         SpaceKind.DIARY -> if (list.groupId != null) "calendar" else "diary"
         SpaceKind.GROUP -> "group"
         SpaceKind.LIST -> "list"
+        SpaceKind.CHAT -> "messages"
     }
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
         LinearProgressIndicator(Modifier.fillMaxWidth(), trackColor = MaterialTheme.colorScheme.surfaceVariant)
@@ -1342,6 +1349,7 @@ private fun TodoList.summary(): String = if (isJoining) "Joining…" else if (ar
     }
     SpaceKind.LIST -> "${visibleItems.count { !it.checked && !it.heading }} to do"
     SpaceKind.GROUP -> "Group"
+    SpaceKind.CHAT -> "Messages"
 }
 
 /** Name plus a List / Diary choice. */

@@ -24,6 +24,7 @@ object Notifications {
     const val CHANNEL_CALENDAR = "calendar"
     const val CHANNEL_SCHEDULE = "schedule"
     const val CHANNEL_REMINDERS = "reminders"
+    const val CHANNEL_MESSAGES = "messages"
     const val EXTRA_LIST_ID = "app.twodo.LIST_ID"
 
     private const val MAX_LINES = 6
@@ -41,6 +42,7 @@ object Notifications {
                 NotificationChannel(CHANNEL_CALENDAR, context.getString(R.string.channel_calendar), NotificationManager.IMPORTANCE_DEFAULT),
                 NotificationChannel(CHANNEL_SCHEDULE, context.getString(R.string.channel_schedule), NotificationManager.IMPORTANCE_DEFAULT),
                 NotificationChannel(CHANNEL_REMINDERS, context.getString(R.string.channel_reminders), NotificationManager.IMPORTANCE_HIGH),
+                NotificationChannel(CHANNEL_MESSAGES, context.getString(R.string.channel_messages), NotificationManager.IMPORTANCE_HIGH),
             ),
         )
     }
@@ -64,13 +66,18 @@ object Notifications {
 
     /**
      * Adds to the space's "what changed" notification, e.g. "Sam ticked Milk" — [lines] being the ones
-     * this phone's settings want to hear about. Calendar changes come on their own channel.
+     * this phone's settings want to hear about. Calendar changes and messages ("Sam: on my way") come on
+     * their own channels.
      */
     fun addChanges(context: Context, event: ListEvent.Changed, lines: List<String>) {
         if (lines.isEmpty()) return
-        val channel = if (event.kind == SpaceKind.DIARY) CHANNEL_CALENDAR else CHANNEL_CHANGES
+        val channel = when (event.kind) {
+            SpaceKind.DIARY -> CHANNEL_CALENDAR
+            SpaceKind.CHAT -> CHANNEL_MESSAGES
+            else -> CHANNEL_CHANGES
+        }
         val shown = pendingChanges.getOrPut(event.listId) { mutableListOf() }
-        shown += lines.map { "${event.who} $it" }
+        shown += lines.map { if (event.kind == SpaceKind.CHAT) "${event.who}: $it" else "${event.who} $it" }
         addChangesNotification(context, event, channel, shown)
     }
 

@@ -27,6 +27,7 @@ import app.twodo.model.SpaceKind
 import app.twodo.model.TodoList
 import app.twodo.model.Version
 import app.twodo.model.auditEntryFor
+import app.twodo.model.chatRefs
 import app.twodo.model.edited
 import app.twodo.model.headingMove
 import app.twodo.model.itemMove
@@ -100,6 +101,7 @@ class ListRepository(private val dir: File, private val identity: Identity) {
             SpaceKind.DIARY -> "Calendar"
             SpaceKind.GROUP -> "Family"
             SpaceKind.LIST -> "My list"
+            SpaceKind.CHAT -> "Messages"
         }
         val list = TodoList(
             UUID.randomUUID().toString(), name.trim().ifEmpty { fallback }, ListKeys.newSecret(),
@@ -306,8 +308,38 @@ class ListRepository(private val dir: File, private val identity: Identity) {
         val now = System.currentTimeMillis()
         return Item(
             id = space.id, text = space.name, createdAt = now, version = Version(now, identity.deviceId), editor = identity.deviceName,
-            spaceId = space.id, spaceSecret = space.secret, spaceKind = space.kind,
+            spaceId = space.id, spaceSecret = space.secret,
+            // Messages go out as a list, marked as the chat, so versions without messages can cope (see SpaceKind.CHAT).
+            spaceKind = if (space.kind == SpaceKind.CHAT) SpaceKind.LIST else space.kind, chat = space.kind == SpaceKind.CHAT,
         )
+    }
+
+    /**
+     * Sends a message to the group's messages, starting them if nobody has yet. Returns false if there's
+     * no such group.
+     */
+    suspend fun sendMessage(groupId: String, text: String): Boolean {
+        val trimmed = text.trim().ifEmpty { return true }
+        val chatId = withContext(NonCancellable) {
+            mutex.withLock {
+                val group = _lists.value[groupId]?.takeIf { it.kind == SpaceKind.GROUP } ?: return@withLock null
+                group.chatRefs.firstNotNullOfOrNull { it.spaceId?.takeIf { id -> id in _lists.value } }
+                    ?: newSpace("Messages", SpaceKind.CHAT, groupId).also { putGroupItem(groupId, spaceItem(it)) }.id
+            }
+        } ?: return false
+        putLocal(chatId) {
+            val now = System.currentTimeMillis()
+            Item(id = UUID.randomUUID().toString(), text = trimmed, createdAt = now, version = Version(now, identity.deviceId), editor = identity.deviceName)
+        }
+        markRead(chatId)
+        return true
+    }
+
+    /** This phone has shown every message in [chatId] so far. */
+    suspend fun markRead(chatId: String): Unit = mutex.withLock {
+        val chat = _lists.value[chatId] ?: return
+        val newest = chat.items.values.maxOfOrNull { it.createdAt } ?: return
+        if (newest > chat.readUpTo) save(chat.copy(readUpTo = newest))
     }
 
     /** Saves a group item made here and sends it to the group (caller holds [mutex]). */
@@ -558,7 +590,8 @@ class ListRepository(private val dir: File, private val identity: Identity) {
     private suspend fun putLocal(listId: String, makeItem: (TodoList) -> Item?): Unit = mutex.withLock {
         val list = _lists.value[listId] ?: return
         val item = makeItem(list) ?: return
-        val entry = auditEntryFor(list.items[item.id], item, identity.deviceName)
+        // Messages are their own record; a history of them would only double what's synced.
+        val entry = if (list.kind == SpaceKind.CHAT) null else auditEntryFor(list.items[item.id], item, identity.deviceName)
         val audit = if (entry != null) list.audit + (entry.id to entry) else list.audit
         save(list.copy(items = list.items + (item.id to item), audit = audit))
         _localEdits.tryEmit(LocalEdit(listId, item, entry, list.secret))

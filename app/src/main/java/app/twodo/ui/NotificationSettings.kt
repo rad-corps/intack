@@ -168,6 +168,10 @@ internal fun NotificationSettingsScreen(app: TwoDoApp, onBack: () -> Unit) {
                 toggle("Someone ticks off or removes an item", "Can be a lot while someone's shopping", Identity::notifyListTicked)
 
                 Spacer(Modifier.height(16.dp))
+                SectionTitle("Messages")
+                toggle("Someone sends a message", null, Identity::notifyMessages)
+
+                Spacer(Modifier.height(16.dp))
                 SectionTitle("People and groups")
                 toggle("Someone joins", "A group, or a list you share", Identity::notifyJoined)
                 toggle("Someone leaves", null, Identity::notifyLeft)

@@ -31,12 +31,15 @@ import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Checklist
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -60,6 +63,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -84,12 +88,14 @@ import app.twodo.model.TodoList
 import app.twodo.model.calendarRef
 import app.twodo.model.isJoining
 import app.twodo.model.listRefs
+import app.twodo.model.unreadMessages
 import app.twodo.sync.SyncStatus
 import kotlinx.coroutines.launch
 
 enum class GroupTab(val label: String, val icon: ImageVector) {
     CALENDAR("Calendar", Icons.Outlined.CalendarMonth),
     LISTS("Lists", Icons.Outlined.Checklist),
+    MESSAGES("Messages", Icons.Outlined.Forum),
     /** The group's people, inviting, and its look, name and leaving. */
     SETTINGS("Group settings", Icons.Outlined.Settings),
 }
@@ -122,8 +128,17 @@ internal fun GroupScreen(
     snackbar: SnackbarHostState,
     navigation: GroupNavigation,
     onOpenSpace: (String) -> Unit,
+    /** A tab to switch to, e.g. Messages from a message notification; [onTabHandled] once it has. */
+    tabRequest: GroupTab? = null,
+    onTabHandled: () -> Unit = {},
 ) {
     var tab by rememberSaveable(group.id) { mutableStateOf(GroupTab.CALENDAR) }
+    LaunchedEffect(tabRequest) {
+        if (tabRequest != null) {
+            tab = tabRequest
+            onTabHandled()
+        }
+    }
     var inviting by remember { mutableStateOf(false) }
     val groupStatus = status[group.id] ?: SyncStatus()
     val calendar = group.calendarRef?.spaceId?.let { lists[it] }
@@ -140,11 +155,18 @@ internal fun GroupScreen(
         },
         bottomBar = {
             NavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.94f)) {
+                val unread = group.unreadMessages(lists, app.identity.deviceId)
                 GroupTab.entries.forEach { option ->
                     NavigationBarItem(
                         selected = tab == option,
                         onClick = { tab = option },
-                        icon = { Icon(option.icon, null) },
+                        icon = {
+                            if (option == GroupTab.MESSAGES && unread > 0 && tab != GroupTab.MESSAGES) {
+                                BadgedBox(badge = { Badge { Text(if (unread > 99) "99+" else "$unread") } }) { Icon(option.icon, null) }
+                            } else {
+                                Icon(option.icon, null)
+                            }
+                        },
                         label = { Text(option.label) },
                         colors = NavigationBarItemDefaults.colors(indicatorColor = MaterialTheme.colorScheme.primaryContainer),
                     )
@@ -164,6 +186,7 @@ internal fun GroupScreen(
                     EmptyState(if (group.isJoining) "The calendar will appear once you've joined." else "No calendar yet.")
                 }
                 GroupTab.LISTS -> ListsTab(app, group, lists, onOpenSpace)
+                GroupTab.MESSAGES -> MessagesTab(app, group, lists, names, Modifier.weight(1f))
                 GroupTab.SETTINGS -> GroupSettingsTab(app, group, groupStatus, names, onInvite = { inviting = true }, onLeft = navigation.onHome)
             }
         }

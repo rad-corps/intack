@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import app.twodo.model.SpaceKind
 import app.twodo.model.TodoList
+import app.twodo.model.messages
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -38,6 +39,8 @@ class DevBridge : BroadcastReceiver() {
                 ?: lists.filter { it.name.equals(key, ignoreCase = true) }.let { if (it.size > 1) error("more than one list called $key; use its id") else it.firstOrNull() }
                 ?: error("no list $key")
         }
+        fun group(): TodoList = repo.lists.value.values.firstOrNull { it.kind == SpaceKind.GROUP && (it.id == arg("group") || it.name.equals(arg("group"), true)) }
+            ?: error("no group ${arg("group")}")
         fun itemId(list: TodoList): String {
             val key = arg("item")
             val items = list.visibleItems
@@ -64,13 +67,19 @@ class DevBridge : BroadcastReceiver() {
                 val id = itemId(l)
                 repo.setChecked(l.id, id, cmd == "tick"); synced(app); "${cmd}ed $id"
             }
+            "messages" -> group().let { g ->
+                val names = app.sync.names.value
+                (listOf("Messages in ${g.name}") + g.messages(repo.lists.value).takeLast(intent.getIntExtra("last", 30)).map { m ->
+                    "${java.text.SimpleDateFormat("MM-dd HH:mm").format(m.createdAt)}  ${if (m.version.by == app.identity.deviceId) "me" else names[m.version.by] ?: m.editor}: ${m.text}"
+                }).joinToString("\n")
+            }
+            "say" -> group().let { g -> repo.sendMessage(g.id, arg("text")); synced(app); "sent to ${g.name}" }
             "newlist" -> {
-                val group = repo.lists.value.values.firstOrNull { it.kind == SpaceKind.GROUP && (it.id == arg("group") || it.name.equals(arg("group"), true)) }
-                    ?: error("no group ${arg("group")}")
+                val group = group()
                 val made = repo.addToGroup(group.id, arg("name")) ?: error("couldn't add to ${group.name}")
                 synced(app); "made ${made.name} ${made.id}"
             }
-            else -> error("unknown cmd $cmd; one of lists, show, add, tick, untick, note, newlist")
+            else -> error("unknown cmd $cmd; one of lists, show, add, tick, untick, note, messages, say, newlist")
         }
     }
 
