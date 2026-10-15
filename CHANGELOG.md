@@ -5,6 +5,10 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+**Archiving a finished list closes it.** Tapping Archive on the "All done!" prompt now takes you
+back to your lists, like Archive in the ⋮ menu. To bring an archived list back, open it and choose
+**Bring back** from its ⋮ menu, so following the prompts can't archive and unarchive in a loop.
+
 ## v0.6.30 — 2026-10-13
 
 **Group settings match your look.** The people and settings rows in a group's settings now take the

@@ -578,13 +578,13 @@ internal fun ListScreen(app: TwoDoApp, list: TodoList, status: SyncStatus, snack
         topBar = { SpaceTopBar(app, list, status, onBack, onHistory = { showHistory = true }) },
         snackbarHost = { SnackbarHost(snackbar) },
     ) { padding ->
-        ListBody(app, list, status, Modifier.padding(padding).consumeWindowInsets(padding))
+        ListBody(app, list, status, onBack, Modifier.padding(padding).consumeWindowInsets(padding))
     }
 }
 
 /** The list itself: add bar and tickable, draggable items. */
 @Composable
-internal fun ListBody(app: TwoDoApp, list: TodoList, status: SyncStatus, modifier: Modifier = Modifier) {
+internal fun ListBody(app: TwoDoApp, list: TodoList, status: SyncStatus, onBack: () -> Unit, modifier: Modifier = Modifier) {
     val scope = rememberCoroutineScope()
     var newText by rememberSaveable(list.id) { mutableStateOf("") }
     val names by app.sync.names.collectAsStateWithLifecycle()
@@ -604,7 +604,7 @@ internal fun ListBody(app: TwoDoApp, list: TodoList, status: SyncStatus, modifie
 
     Column(modifier.fillMaxSize()) {
         JoiningBanner(list, status)
-        ArchiveBanner(app, list)
+        ArchiveBanner(app, list, onBack)
         // Local copy so dragging is smooth; committed to the repository when the drag ends.
         val shown = if (list.hideHeadings) list.visibleItems.filter { !it.heading } else list.visibleItems
         // The drag handles keep the callbacks they're first given, so everything those read must be
@@ -831,6 +831,10 @@ internal fun SpaceTopBar(app: TwoDoApp, list: TodoList, status: SyncStatus, onBa
                 DropdownMenuItem(text = { Text("History") }, onClick = { menu = false; onHistory() })
                 if (list.kind == SpaceKind.LIST && !list.archived) {
                     DropdownMenuItem(text = { Text("Archive") }, onClick = { menu = false; onBack(); app.save { app.repo.archive(list.id) } })
+                }
+                // Only here, not on the archived banner, so following the prompts can't archive and unarchive in a loop.
+                if (list.archived) {
+                    DropdownMenuItem(text = { Text("Bring back") }, onClick = { menu = false; app.save { app.repo.unarchive(list.id) } })
                 }
                 if (inGroup) {
                     DropdownMenuItem(text = { Text("Rename") }, onClick = { menu = false; renaming = true })
@@ -1473,33 +1477,27 @@ internal fun ArchivedHeader(count: Int, expanded: Boolean, onToggle: () -> Unit)
 }
 
 /**
- * At the top of a list: if it's archived, a way to bring it back; if everything in it is ticked, an
- * offer to archive it, since every list that's open keeps connections going.
+ * At the top of a list: if it's archived, where to bring it back from (the menu, deliberately not a
+ * button here); if everything in it is ticked, an offer to archive it, since every list that's open
+ * keeps connections going. Archiving closes the list, like the menu's Archive.
  */
 @Composable
-private fun ArchiveBanner(app: TwoDoApp, list: TodoList) {
-    val (text, action, onAction) = when {
-        list.archived -> Triple(
-            "Archived on this phone, so it isn't syncing. Bring it back to see the others' changes and send yours.",
-            "Bring back",
-            { app.save { app.repo.unarchive(list.id) } },
-        )
-        list.offerArchive -> Triple(
-            "All done! Archive this list? It stops syncing, which saves battery, and you can bring it back any time.",
-            "Archive",
-            { app.save { app.repo.archive(list.id) } },
-        )
-        else -> return
-    }
+private fun ArchiveBanner(app: TwoDoApp, list: TodoList, onBack: () -> Unit) {
+    if (!list.archived && !list.offerArchive) return
     Card(
         Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
     ) {
-        Column(Modifier.padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 4.dp)) {
-            Text(text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSecondaryContainer)
-            Row(Modifier.align(Alignment.End)) {
-                if (!list.archived) TextButton(onClick = { app.save { app.repo.declineArchiveOffer(list.id) } }) { Text("Not now") }
-                TextButton(onClick = onAction) { Text(action) }
+        Column(Modifier.padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = if (list.archived) 12.dp else 4.dp)) {
+            Text(
+                if (list.archived) "Archived on this phone, so it isn't syncing. To see the others' changes and send yours, bring it back from the ⋮ menu."
+                else "All done! Archive this list? It stops syncing, which saves battery, and you can bring it back any time.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
+            )
+            if (!list.archived) Row(Modifier.align(Alignment.End)) {
+                TextButton(onClick = { app.save { app.repo.declineArchiveOffer(list.id) } }) { Text("Not now") }
+                TextButton(onClick = { onBack(); app.save { app.repo.archive(list.id) } }) { Text("Archive") }
             }
         }
     }
