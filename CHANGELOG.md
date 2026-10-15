@@ -5,6 +5,8 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+**Tidier Lists tab.** The "Move a list into …" link under New list is gone.
+
 ## v0.6.31 — 2026-10-15
 
 **Notes on list items.** Tap an item to add a note: more detail, a link, or how it went. The start of

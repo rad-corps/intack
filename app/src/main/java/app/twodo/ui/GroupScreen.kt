@@ -30,7 +30,6 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Checklist
-import androidx.compose.material.icons.outlined.DriveFileMove
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.Home
@@ -247,9 +246,7 @@ internal fun GroupSwitcher(expanded: Boolean, currentId: String?, navigation: Gr
 private fun ListsTab(app: TwoDoApp, group: TodoList, lists: Map<String, TodoList>, onOpenSpace: (String) -> Unit) {
     val scope = rememberCoroutineScope()
     var creating by remember { mutableStateOf(false) }
-    var moving by remember { mutableStateOf(false) }
     var showArchived by rememberSaveable { mutableStateOf(false) }
-    val others = lists.values.filter { it.groupId == null && it.kind == SpaceKind.LIST }.sortedBy { it.name.lowercase() }
     Column(Modifier.fillMaxSize()) {
         LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             val (archived, active) = group.listRefs.partition { ref -> ref.spaceId?.let { lists[it] }?.archived == true }
@@ -288,9 +285,6 @@ private fun ListsTab(app: TwoDoApp, group: TodoList, lists: Map<String, TodoList
                 Spacer(Modifier.width(8.dp))
                 Text("New list")
             }
-            if (others.isNotEmpty()) {
-                TextButton(onClick = { moving = true }) { Text("Move a list into ${group.name}") }
-            }
         }
     }
     if (creating) {
@@ -318,31 +312,6 @@ private fun ListsTab(app: TwoDoApp, group: TodoList, lists: Map<String, TodoList
                 }, enabled = name.isNotBlank()) { Text("Create") }
             },
             dismissButton = { TextButton(onClick = { creating = false }) { Text("Cancel") } },
-        )
-    }
-    if (moving) {
-        AlertDialog(
-            onDismissRequest = { moving = false },
-            title = { Text("Move a list into ${group.name}") },
-            text = {
-                Column {
-                    Text("Everyone in ${group.name} will get it. Anyone you shared it with before keeps it too.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(Modifier.height(8.dp))
-                    others.forEach { list ->
-                        Row(
-                            Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp))
-                                .clickable { moving = false; scope.launch { app.repo.moveIntoGroup(group.id, list.id) } }
-                                .padding(vertical = 12.dp, horizontal = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Icon(Icons.Outlined.DriveFileMove, null, tint = MaterialTheme.colorScheme.primary)
-                            Spacer(Modifier.width(12.dp))
-                            Text(list.name, style = MaterialTheme.typography.bodyLarge)
-                        }
-                    }
-                }
-            },
-            confirmButton = { TextButton(onClick = { moving = false }) { Text("Cancel") } },
         )
     }
 }

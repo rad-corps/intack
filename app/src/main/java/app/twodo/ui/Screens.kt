@@ -558,8 +558,7 @@ private fun GroupsIntro(onStart: () -> Unit) {
             Text("New: groups", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
             Spacer(Modifier.height(4.dp))
             Text(
-                "One calendar and your lists, shared with the same people. Invite them once and they get everything. " +
-                    "You can move these lists into the group afterwards.",
+                "One calendar and your lists, shared with the same people. Invite them once and they get everything.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onPrimaryContainer,
             )

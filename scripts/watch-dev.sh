@@ -8,7 +8,10 @@ prev=""; down=0
 while true; do
   if now=$(bash "$DEV" show "$LIST" 2>&1) && [[ $now != error:* && $now != *"Broadcast completed: result=0"* ]]; then
     [ $down = 1 ] && echo "back: can see $LIST again"; down=0
-    if [ -n "$prev" ]; then
+    if [ -z "$prev" ]; then
+      # What's already waiting when the watch starts.
+      printf '%s\n' "$now" | grep '^\[ \]' | sed 's/^/open: /'
+    else
       # Lines that are new or changed since last time (an item's line, or a line of its note).
       diff <(printf '%s\n' "$prev") <(printf '%s\n' "$now") | sed -n 's/^> /changed: /p'
       # Items that went away.
