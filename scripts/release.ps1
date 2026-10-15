@@ -2,7 +2,7 @@
 .SYNOPSIS
 Builds a signed release APK and publishes it as a GitHub Release, where Obtainium picks it up. Also
 builds the signed app bundle (.aab) to upload to Google Play.
-The release notes are the "## Unreleased" section of CHANGELOG.md, which becomes "## v<Version> — <date>".
+The release notes are the "## Unreleased" section of CHANGELOG.md, which becomes "## v<Version> - <date>".
 
 .EXAMPLE
 ./scripts/release.ps1 0.4.0
@@ -27,15 +27,19 @@ if (-not $env:JAVA_HOME) {
 }
 
 # Release notes: everything under "## Unreleased" up to the next version heading.
-$changelog = Get-Content CHANGELOG.md -Raw
+# Read and written as UTF-8 (no BOM) explicitly: Windows PowerShell 5.1 would otherwise use the ANSI
+# code page and mangle the notes. For the same reason this script itself sticks to ASCII.
+$utf8 = New-Object System.Text.UTF8Encoding $false
+$changelogPath = Join-Path $PWD CHANGELOG.md
+$changelog = [IO.File]::ReadAllText($changelogPath, $utf8)
 $match = [regex]::Match($changelog, '(?ms)^## Unreleased\s*\r?\n(.*?)(?=^## )')
 $notes = $match.Groups[1].Value.Trim()
 if (-not $match.Success -or -not $notes) { throw 'Add release notes under "## Unreleased" in CHANGELOG.md first.' }
 $date = Get-Date -Format 'yyyy-MM-dd'
-$changelog = $changelog.Substring(0, $match.Index) + "## Unreleased`n`n## v$Version — $date`n`n$notes`n`n" +
+$dash = [char]0x2014
+$changelog = $changelog.Substring(0, $match.Index) + "## Unreleased`n`n## v$Version $dash $date`n`n$notes`n`n" +
     $changelog.Substring($match.Index + $match.Length)
-Set-Content CHANGELOG.md $changelog.TrimEnd() -NoNewline
-Add-Content CHANGELOG.md ''
+[IO.File]::WriteAllText($changelogPath, $changelog.TrimEnd() + "`n", $utf8)
 
 # versionName comes from the argument; versionCode just has to keep increasing.
 $props = Get-Content gradle.properties
@@ -64,7 +68,7 @@ git push origin main "v$Version"
 if ($LASTEXITCODE) { throw 'Push failed; the release commit and tag are local only.' }
 
 $notesFile = New-TemporaryFile
-Set-Content $notesFile $notes
+[IO.File]::WriteAllText($notesFile.FullName, $notes, $utf8)
 gh release create "v$Version" $apk --title "TwoDo v$Version" --notes-file $notesFile
 Remove-Item $notesFile
 if ($LASTEXITCODE) { throw 'Creating the GitHub release failed; retry with: gh release create ...' }
