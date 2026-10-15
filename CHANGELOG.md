@@ -5,6 +5,8 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+## v0.6.31 — 2026-10-15
+
 **Notes on list items.** Tap an item to add a note: more detail, a link, or how it went. The start of
 the note shows under the item, and everyone sees it. Writing a note never clashes with someone
 ticking the item at the same time.
