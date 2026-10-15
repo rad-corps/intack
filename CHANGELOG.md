@@ -5,6 +5,8 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+## v0.6.34 — 2026-10-15
+
 **Much less battery in the background.** With the app closed, TwoDo kept direct connections to
 everyone open, and they talked several times a second, so the phone's radio never rested. Now,
 20 seconds after you leave the app, it keeps just two quiet relay connections, which still bring in
