@@ -29,6 +29,16 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 Or open the folder in Android Studio.
 
+### Driving the debug app from adb
+
+Debug builds accept commands from `adb shell` (and nothing else) to read and change lists, which
+lets a script or an AI assistant work from a shared todo list:
+
+```
+bash scripts/dev.sh show Dev
+bash scripts/dev.sh tick Dev 875fd9
+```
+
 ### Release build (for installing on real phones)
 
 ```
