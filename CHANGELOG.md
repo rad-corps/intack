@@ -5,6 +5,12 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+**Much less battery in the background.** With the app closed, TwoDo kept direct connections to
+everyone open, and they talked several times a second, so the phone's radio never rested. Now,
+20 seconds after you leave the app, it keeps just two quiet relay connections, which still bring in
+changes and messages for notifications. Measured on a test phone: about 150 times less network
+traffic in the background. Opening the app reconnects directly as before.
+
 ## v0.6.33 — 2026-10-15
 
 **Messages.** Each group has a Messages tab: a conversation for everyone in the group, newest at

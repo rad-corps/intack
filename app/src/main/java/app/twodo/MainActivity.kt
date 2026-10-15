@@ -87,13 +87,17 @@ class MainActivity : ComponentActivity() {
         if (app.identity.backgroundSync) SyncService.setEnabled(this, true)
         app.visibleActivities++
         Diagnostics.setVisible(true)
+        app.sync.setOnScreen(true)
         app.sync.acquire()
     }
 
     override fun onStop() {
         app.sync.release()
         app.visibleActivities--
-        if (app.visibleActivities == 0) Diagnostics.setVisible(false)
+        if (app.visibleActivities == 0) {
+            Diagnostics.setVisible(false)
+            app.sync.setOnScreen(false)
+        }
         super.onStop()
     }
 

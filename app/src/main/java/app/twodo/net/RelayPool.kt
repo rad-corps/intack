@@ -142,20 +142,23 @@ private const val BASE_INTERVAL_MS = 200L
 private const val MAX_INTERVAL_MS = 5_000L
 
 /**
- * Connections to the public Nostr relays, shared by all lists. Lists [subscribe] to their events and
- * [publish] signed events; each event goes to every relay, and incoming duplicates are dropped.
- * Use from [scope] only.
+ * Connections to the public Nostr relays ([urls]), shared by all lists. Lists [subscribe] to their
+ * events and [publish] signed events; each event goes to every relay, and incoming duplicates are
+ * dropped. [carried] are recently published events from the pool this one replaces, re-sent once
+ * connected in case the old one closed before they went out. Use from [scope] only.
  */
-class RelayPool(http: OkHttpClient, private val scope: CoroutineScope) {
+class RelayPool(http: OkHttpClient, private val scope: CoroutineScope, urls: List<String> = RELAYS, carried: List<Pair<Long, NostrEvent>> = emptyList()) {
     private class Subscription(val filter: JsonObject, val onEvent: suspend (NostrEvent) -> Unit, val onCaughtUp: suspend () -> Unit) {
         val caughtUpOn = mutableSetOf<String>()
     }
 
-    private val relays = RELAYS.map { NostrRelay(it, http, scope, ::onOpen, ::onMessage) }
+    private val relays = urls.map { NostrRelay(it, http, scope, ::onOpen, ::onMessage) }
     private val subscriptions = mutableMapOf<String, Subscription>()
     private val seen = LinkedHashSet<String>()
     /** Recently published events, re-sent to relays that (re)connect, so nothing is lost while one is down. */
-    private val recent = ArrayDeque<Pair<Long, NostrEvent>>()
+    private val recent = ArrayDeque(carried)
+    /** Events published lately, for a pool that replaces this one. */
+    val recentEvents: List<Pair<Long, NostrEvent>> get() = recent.toList()
     /** Retries so far for events a relay rate-limited, by relay url + event id. */
     private val retries = mutableMapOf<String, Int>()
     private val startedAt = SystemClock.elapsedRealtime()

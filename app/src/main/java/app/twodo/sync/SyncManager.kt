@@ -22,12 +22,14 @@ import app.twodo.net.SwarmEvents
 import app.twodo.net.SyncLog
 import app.twodo.net.NostrEvent
 import app.twodo.net.NostrIdentity
+import app.twodo.net.RELAYS
 import app.twodo.net.RELAY_EXPIRY_DAYS
 import app.twodo.net.RelayPool
 import app.twodo.net.TWODO_KIND
 import app.twodo.net.TWODO_LIVE_KIND
 import app.twodo.net.TrackerPool
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.delay
@@ -101,6 +103,9 @@ data class SyncStatus(
 /**
  * Keeps one [ListSwarm] per list while anything needs syncing (the app is visible, the background
  * service runs, or the periodic worker runs). Reference counted through [acquire]/[release].
+ *
+ * Off screen it keeps only a few relay connections that check in rarely: enough to hear about
+ * changes and notify, without the direct connections' constant chatter, which kept the radio awake.
  */
 class SyncManager(context: Context, private val repo: ListRepository, private val identity: Identity) : SwarmEvents {
     private val appContext = context.applicationContext
@@ -109,6 +114,8 @@ class SyncManager(context: Context, private val repo: ListRepository, private va
     private val scope = CoroutineScope(SupervisorJob() + Executors.newSingleThreadExecutor { Thread(it, "TwoDo-sync") }.asCoroutineDispatcher())
     private val json = Json { ignoreUnknownKeys = true }
     private val http = OkHttpClient.Builder().pingInterval(20, TimeUnit.SECONDS).build()
+    /** Off screen: a ping every few minutes keeps the connection open without waking the radio often. */
+    private val quietHttp = http.newBuilder().pingInterval(BACKGROUND_PING_S, TimeUnit.SECONDS).build()
     private val peerId = ListSwarm.randomId()
     private val factory by lazy {
         PeerConnectionFactory.initialize(PeerConnectionFactory.InitializationOptions.builder(appContext).createInitializationOptions())
@@ -123,6 +130,11 @@ class SyncManager(context: Context, private val repo: ListRepository, private va
     private val relayLists = mutableMapOf<String, RelayList>()
     private val keys = mutableMapOf<String, ListKeys>()
     private var users = 0
+    /** The app is on screen: connect directly and through every relay. */
+    private var onScreen = false
+    /** Whether [relays] was made for the app on screen. */
+    private var relaysOnScreen = false
+    private var goingOff: Job? = null
     private var online = true
     /** Peers whose first full sync is just us joining, not changes worth announcing. */
     private val firstSyncPeers = mutableSetOf<Peer>()
@@ -180,7 +192,7 @@ class SyncManager(context: Context, private val repo: ListRepository, private va
         scope.launch {
             while (true) {
                 delay(5_000)
-                publishStatus()
+                if (onScreen) publishStatus()
             }
         }
         scope.launch {
@@ -239,30 +251,54 @@ class SyncManager(context: Context, private val repo: ListRepository, private va
         }
     }
 
+    /** The app came on screen or went off it (see the class comment). */
+    fun setOnScreen(visible: Boolean) {
+        scope.launch {
+            goingOff?.cancel()
+            if (onScreen == visible) return@launch
+            if (visible) {
+                onScreen = true
+                return@launch reconcile()
+            }
+            // After a moment: turning the phone or glancing at another app shouldn't swap connections.
+            goingOff = scope.launch {
+                delay(OFF_SCREEN_AFTER_MS)
+                onScreen = false
+                reconcile()
+            }
+        }
+    }
+
     /** Runs one swarm (direct connections) and one relay subscription per list while in use; none otherwise. */
     private suspend fun reconcile() {
         Diagnostics.count("Sync: reconciles")
         // Archived lists don't sync: that's the point of archiving them.
         val wanted = if (users > 0) repo.lists.value.filterValues { !it.archived } else emptyMap()
-        val direct = if (identity.directConnections) wanted else emptyMap()
+        val direct = if (identity.directConnections && onScreen) wanted else emptyMap()
         (swarms.keys - direct.keys).forEach { id -> swarms.remove(id)?.stop() }
         (relayLists.keys - wanted.keys).forEach { id -> relayLists.remove(id)?.let { relays?.unsubscribe(it.subscriptionId) } }
         keys.keys.retainAll(wanted.keys)
-        if (users == 0) {
+        if (users == 0 || !onScreen) {
             pool?.close()
             pool = null
-            relays?.close()
-            relays = null
-            return publishStatus()
         }
+        // Coming on screen or going off it: swap to the other kind of relay connections.
+        val carried = relays?.takeIf { users == 0 || relaysOnScreen != onScreen }?.let { old ->
+            old.close()
+            relays = null
+            relayLists.clear()
+            old.recentEvents
+        }.orEmpty()
+        if (users == 0) return publishStatus()
         // Connect as soon as the app is in use, even before any list needs it.
-        val pool = pool ?: TrackerPool(http, scope).also { pool = it; it.start() }
-        val relays = relays ?: RelayPool(http, scope).also { relays = it; it.start() }
+        if (onScreen && pool == null) pool = TrackerPool(http, scope).also { it.start() }
+        val relays = relays ?: (if (onScreen) RelayPool(http, scope, carried = carried) else RelayPool(quietHttp, scope, RELAYS.take(BACKGROUND_RELAYS), carried))
+            .also { relays = it; relaysOnScreen = onScreen; it.start() }
         for ((id, list) in wanted) {
             val listKeys = keys.getOrPut(id) { ListKeys(list.secret) }
             if (id in direct && id !in swarms) {
                 val offerCount = { repo.lists.value[id]?.members?.keys?.count { it != identity.deviceId } ?: 1 }
-                swarms[id] = ListSwarm(id, listKeys.topic, peerId, factory, pool, scope, this, offerCount).also { it.start() }
+                swarms[id] = ListSwarm(id, listKeys.topic, peerId, factory, pool!!, scope, this, offerCount).also { it.start() }
             }
             if (id !in relayLists) relayLists[id] = RelayList(id, list.secret).also { it.subscribe(relays, list.relaySince) }
         }
@@ -310,6 +346,8 @@ class SyncManager(context: Context, private val repo: ListRepository, private va
         // Stored edits don't include items nobody has touched lately, so ask until we've had a full copy.
         val wantFull = (!list.createdHere && !list.fullSynced) || stale
         relayList.awaitingFull = wantFull
+        // Off screen there's nobody to greet: this only reconnected to listen (unless the list is still missing).
+        if (!onScreen && !wantFull) return relayList.trace("caught up")
         relayList.trace("caught up; saying hello${if (wantFull) " and asking for the whole list" else ""}")
         askViaRelays(relayList)
         publishStatus()
@@ -638,5 +676,9 @@ class SyncManager(context: Context, private val repo: ListRepository, private va
         const val FRESH_HELLO_S = 120L
         const val FULL_RESEND_MS = 30_000L
         const val PRESENCE_WINDOW_MS = 30 * 60_000L
+        /** Relays kept connected off screen (the first of [RELAYS]); others send to all of them. */
+        const val BACKGROUND_RELAYS = 2
+        const val BACKGROUND_PING_S = 240L
+        const val OFF_SCREEN_AFTER_MS = 20_000L
     }
 }
