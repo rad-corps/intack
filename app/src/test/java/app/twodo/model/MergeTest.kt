@@ -115,6 +115,41 @@ class MergeTest {
     }
 
     @Test
+    fun noteAndConcurrentTickAreBothKept() {
+        val notedOnA = milk.withNote("The oat one", deviceId = "A", now = 200)
+        val tickedOnB = milk.edit("B", 300) { copy(checked = true) }
+        val a = empty.with(notedOnA).merge(listOf(tickedOnB))
+        val b = empty.with(tickedOnB).merge(listOf(notedOnA))
+        for (side in listOf(a, b)) {
+            val item = side.list.items.getValue("milk")
+            assertTrue(item.checked)
+            assertEquals("The oat one", item.note)
+            assertTrue(side.conflicts.isEmpty())
+        }
+    }
+
+    @Test
+    fun latestNoteWinsAndBlankRemovesIt() {
+        val onA = milk.withNote("Oat", deviceId = "A", now = 200)
+        val onB = milk.withNote("Soy", deviceId = "B", now = 300)
+        assertEquals("Soy", empty.with(onA).merge(listOf(onB)).list.items.getValue("milk").note)
+        assertEquals("Soy", empty.with(onB).merge(listOf(onA)).list.items.getValue("milk").note)
+        val removed = onB.withNote("  ", deviceId = "A", now = 400)
+        assertNull(removed.note)
+        assertNull(empty.with(onB).merge(listOf(removed)).list.items.getValue("milk").note)
+    }
+
+    @Test
+    fun noteSurvivesAnEditFromAVersionWithoutNotes() {
+        val noted = milk.withNote("Oat", deviceId = "A", now = 200)
+        // An older version drops the fields it doesn't know, then ticks the item.
+        val tickedByOldVersion = noted.copy(note = null, noteVersion = null).edit("B", 300) { copy(checked = true) }
+        val item = empty.with(noted).merge(listOf(tickedByOldVersion)).list.items.getValue("milk")
+        assertTrue(item.checked)
+        assertEquals("Oat", item.note)
+    }
+
+    @Test
     fun editKeepsVersionsIncreasingWhenClockIsBehind() {
         val edited = milk.edit("B", now = 50) { copy(checked = true) }
         assertTrue(edited.version > milk.version)

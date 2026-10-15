@@ -51,8 +51,13 @@ class DevBridge : BroadcastReceiver() {
             }
             "show" -> list().let { l ->
                 (listOf("${l.name} (${l.id})") + l.visibleItems.map { i ->
-                    if (i.heading) "## ${i.text}  ${i.id}" else "[${if (i.checked) "x" else " "}] ${i.text}  ${i.id}  by ${i.editor}"
+                    if (i.heading) "## ${i.text}  ${i.id}"
+                    else "[${if (i.checked) "x" else " "}] ${i.text}  ${i.id}  by ${i.editor}" + i.note?.lines()?.joinToString("") { "\n      $it" }.orEmpty()
                 }).joinToString("\n")
+            }
+            "note" -> list().let { l ->
+                val id = itemId(l)
+                repo.setNote(l.id, id, arg("text")); synced(app); "noted $id"
             }
             "add" -> list().let { l -> repo.addItem(l.id, arg("text"), heading = intent.getBooleanExtra("heading", false)); synced(app); "added to ${l.name}" }
             "tick", "untick" -> list().let { l ->
@@ -65,7 +70,7 @@ class DevBridge : BroadcastReceiver() {
                 val made = repo.addToGroup(group.id, arg("name")) ?: error("couldn't add to ${group.name}")
                 synced(app); "made ${made.name} ${made.id}"
             }
-            else -> error("unknown cmd $cmd; one of lists, show, add, tick, untick, newlist")
+            else -> error("unknown cmd $cmd; one of lists, show, add, tick, untick, note, newlist")
         }
     }
 

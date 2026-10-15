@@ -43,18 +43,44 @@ fun describeChange(before: Item?, after: Item): String? = when {
         if (before.text != after.text) add("renamed ${before.text} to ${after.text}")
         if (before.date != after.date) after.localDate?.let { add("moved ${after.text} to ${formatDay(it)}") }
         if (before.time != after.time) add(after.time?.let { "set ${after.text} to $it" } ?: "removed the time from ${after.text}")
+        if (before.note != after.note) add(
+            when {
+                after.note == null -> "removed the note from ${after.text}"
+                before.note == null -> "added a note to ${after.text}: ${notePreview(after.note)}"
+                else -> "changed the note on ${after.text}: ${notePreview(after.note)}"
+            },
+        )
     }.joinToString(", ").ifEmpty { null }
 }
 
-/** The audit entry for a local edit, or null if the edit isn't worth recording (e.g. a move). */
-fun auditEntryFor(before: Item?, after: Item): AuditEntry? {
+/** A note's first line, cut short, for history and notifications. */
+fun notePreview(note: String): String {
+    val first = note.lineSequence().first().trim()
+    return if (first.length > NOTE_PREVIEW_CHARS || first.length < note.trim().length) first.take(NOTE_PREVIEW_CHARS).trimEnd() + "…" else first
+}
+
+private const val NOTE_PREVIEW_CHARS = 60
+
+/** Notes are edited without a new content version, so a change to only the note is by whoever wrote it. */
+private fun noteOnly(before: Item?, after: Item) =
+    before != null && before.version == after.version && before.noteVersion != after.noteVersion && after.noteVersion != null
+
+/** The version that made this change: the item's, or the note's for a note-only change. */
+fun changeVersion(before: Item?, after: Item): Version = if (noteOnly(before, after)) after.noteVersion!! else after.version
+
+/**
+ * The audit entry for a local edit, or null if the edit isn't worth recording (e.g. a move).
+ * [byName] is who made it, for note-only changes, which don't record an editor.
+ */
+fun auditEntryFor(before: Item?, after: Item, byName: String = after.editor): AuditEntry? {
     val description = describeChange(before, after) ?: return null
+    val version = changeVersion(before, after)
     return AuditEntry(
-        id = "${after.id}/${after.version.ts}/${after.version.by}",
+        id = if (noteOnly(before, after)) "${after.id}/note/${version.ts}/${version.by}" else "${after.id}/${version.ts}/${version.by}",
         itemId = after.id,
-        ts = after.version.ts,
-        by = after.version.by,
-        byName = after.editor,
+        ts = version.ts,
+        by = version.by,
+        byName = if (noteOnly(before, after)) byName else after.editor,
         description = description,
     )
 }

@@ -6,6 +6,7 @@
 #   bash scripts/dev.sh show Dev
 #   bash scripts/dev.sh add Dev "Fix the thing"          (add-heading Dev "Later" for a heading)
 #   bash scripts/dev.sh tick Dev 3f2a                     (untick to undo)
+#   bash scripts/dev.sh note Dev 3f2a "Done in abc123"    (an empty note removes it)
 #   bash scripts/dev.sh newlist "Adam and Claude" Dev
 set -euo pipefail
 export MSYS_NO_PATHCONV=1
@@ -28,6 +29,7 @@ case $cmd in
   add) send add --es list "$(q "$1")" --es text "$(q "$2")" ;;
   add-heading) send add --es list "$(q "$1")" --es text "$(q "$2")" --ez heading true ;;
   tick|untick) send "$cmd" --es list "$(q "$1")" --es item "$(q "$2")" ;;
+  note) send note --es list "$(q "$1")" --es item "$(q "$2")" --es text "$(q "$3")" ;;
   newlist) send newlist --es group "$(q "$1")" --es name "$(q "$2")" ;;
   *) sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
 esac

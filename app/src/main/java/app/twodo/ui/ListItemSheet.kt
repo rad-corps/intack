@@ -37,7 +37,7 @@ import app.twodo.model.AuditEntry
 import app.twodo.model.Item
 
 /**
- * Change a list item: its words, which section it's in, or delete it. For a heading: rename or delete
+ * Change a list item: its words, its note, which section it's in, or delete it. For a heading: rename or delete
  * (deleting a heading leaves its items where they are).
  */
 @Composable
@@ -48,7 +48,7 @@ internal fun ListItemSheet(
     /** The heading the item is under now, if any. */
     section: Item?,
     onDismiss: () -> Unit,
-    onSave: (text: String, headingId: String?) -> Unit,
+    onSave: (text: String, headingId: String?, note: String) -> Unit,
     onDelete: () -> Unit,
     history: List<AuditEntry> = emptyList(),
     historyRow: @Composable (AuditEntry) -> Unit = {},
@@ -56,6 +56,7 @@ internal fun ListItemSheet(
     val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var text by remember { mutableStateOf(item.text) }
     var headingId by remember { mutableStateOf(section?.id) }
+    var note by remember { mutableStateOf(item.note ?: "") }
     var showHistory by remember { mutableStateOf(false) }
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheet) {
@@ -72,6 +73,20 @@ internal fun ListItemSheet(
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
+            if (!item.heading) {
+                Spacer(Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = note,
+                    onValueChange = { note = it },
+                    label = { Text("Note") },
+                    placeholder = { Text("More detail, for everyone") },
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+                    shape = RoundedCornerShape(12.dp),
+                    minLines = 2,
+                    maxLines = 8,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
             if (!item.heading && headings.isNotEmpty()) {
                 Text(
                     "Section",
@@ -88,7 +103,7 @@ internal fun ListItemSheet(
             }
             Spacer(Modifier.height(24.dp))
             Button(
-                onClick = { if (text.isNotBlank()) onSave(text, headingId) },
+                onClick = { if (text.isNotBlank()) onSave(text, headingId, note) },
                 enabled = text.isNotBlank(),
                 modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
             ) { Text("Save", style = MaterialTheme.typography.titleMedium) }

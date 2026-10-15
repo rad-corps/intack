@@ -716,6 +716,16 @@ internal fun ListBody(app: TwoDoApp, list: TodoList, status: SyncStatus, onBack:
                                 textDecoration = if (item.checked) TextDecoration.LineThrough else null,
                                 color = if (item.checked) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.onSurface,
                             )
+                            // The start of its note; tap the item to read or change all of it.
+                            item.note?.let { note ->
+                                Text(
+                                    note,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
                             if (item.checked) {
                                 Text(
                                     tickedBy(item, app.identity.deviceId, names),
@@ -759,11 +769,12 @@ internal fun ListBody(app: TwoDoApp, list: TodoList, status: SyncStatus, onBack:
             headings = list.headings,
             section = sectionOf(list.visibleItems, item.id),
             onDismiss = { editing = null },
-            onSave = { text, headingId ->
+            onSave = { text, headingId, note ->
                 editing = null
                 val before = sectionOf(list.visibleItems, item.id)?.id
                 app.save {
                     app.repo.editText(list.id, item.id, text)
+                    if (!item.heading) app.repo.setNote(list.id, item.id, note)
                     if (!item.heading && headingId != before) app.repo.moveToSection(list.id, item.id, headingId)
                 }
             },

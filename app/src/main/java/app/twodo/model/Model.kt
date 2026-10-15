@@ -48,6 +48,13 @@ data class Item(
      * heading, are in its section. Older versions ignore this and show it as an item.
      */
     val heading: Boolean = false,
+    /**
+     * More detail about a list item, as free text. Synced as its own last-writer-wins value (stamped by
+     * [noteVersion]), like [pos], so writing a note never conflicts with someone ticking the item, and a
+     * version that doesn't know notes can't wipe one out by passing the item on without it.
+     */
+    val note: String? = null,
+    val noteVersion: Version? = null,
 ) {
     val position: Double get() = pos ?: createdAt.toDouble()
     val localDate: LocalDate? get() = date?.let { runCatching { LocalDate.parse(it) }.getOrNull() }

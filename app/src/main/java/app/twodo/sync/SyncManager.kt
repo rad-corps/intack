@@ -13,6 +13,7 @@ import app.twodo.model.AuditEntry
 import app.twodo.model.Item
 import app.twodo.model.ListKeys
 import app.twodo.model.SpaceKind
+import app.twodo.model.changeVersion
 import app.twodo.model.describeChange
 import app.twodo.model.isPhotoPart
 import app.twodo.net.ListSwarm
@@ -504,21 +505,24 @@ class SyncManager(context: Context, private val repo: ListRepository, private va
     private fun announceChanges(listId: String, changes: List<Pair<Item?, Item>>) {
         val kind = repo.lists.value[listId]?.kind ?: SpaceKind.LIST
         changes.mapNotNull { (before, after) ->
-            describeChange(before, after)?.let { Triple(after, it, !after.deleted && (before == null || before.deleted)) }
+            describeChange(before, after)?.let { Described(after, it, !after.deleted && (before == null || before.deleted), changeVersion(before, after).by) }
         }
-            .groupBy { (item, _, _) -> _names.value[item.version.by] ?: item.editor }
+            .groupBy { _names.value[it.by] ?: it.item.editor }
             .forEach { (who, described) ->
                 _events.tryEmit(
                     ListEvent.Changed(
                         listId, listName(listId), who,
-                        lines = described.map { it.second },
-                        itemIds = described.map { it.first.id },
-                        added = described.map { it.third },
+                        lines = described.map { it.line },
+                        itemIds = described.map { it.item.id },
+                        added = described.map { it.added },
                         kind = kind,
                     ),
                 )
             }
     }
+
+    /** One change to announce: [by] is the device that made it. */
+    private data class Described(val item: Item, val line: String, val added: Boolean, val by: String)
 
     private fun listName(listId: String) = repo.lists.value[listId]?.name ?: "a list"
 

@@ -39,6 +39,7 @@ import app.twodo.model.newItemPosition
 import app.twodo.model.planGroup
 import app.twodo.model.sectionsFromPositions
 import app.twodo.model.syncedGroupName
+import app.twodo.model.withNote
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -491,6 +492,11 @@ class ListRepository(private val dir: File, private val identity: Identity) {
     suspend fun setChecked(listId: String, itemId: String, checked: Boolean) =
         editItem(listId, itemId) { copy(checked = checked) }
 
+    /** Sets a list item's note; blank removes it. Does nothing if it's the same. */
+    suspend fun setNote(listId: String, itemId: String, note: String) = putLocal(listId) { list ->
+        list.items[itemId]?.takeIf { (it.note ?: "") != note.trim() }?.withNote(note, identity.deviceId, System.currentTimeMillis())
+    }
+
     suspend fun deleteItem(listId: String, itemId: String) =
         editItem(listId, itemId) { copy(deleted = true) }
 
@@ -552,7 +558,7 @@ class ListRepository(private val dir: File, private val identity: Identity) {
     private suspend fun putLocal(listId: String, makeItem: (TodoList) -> Item?): Unit = mutex.withLock {
         val list = _lists.value[listId] ?: return
         val item = makeItem(list) ?: return
-        val entry = auditEntryFor(list.items[item.id], item)
+        val entry = auditEntryFor(list.items[item.id], item, identity.deviceName)
         val audit = if (entry != null) list.audit + (entry.id to entry) else list.audit
         save(list.copy(items = list.items + (item.id to item), audit = audit))
         _localEdits.tryEmit(LocalEdit(listId, item, entry, list.secret))

@@ -17,6 +17,10 @@ fun Item.edited(deviceId: String, deviceName: String, now: Long, change: Item.()
 fun Item.moved(pos: Double, deviceId: String, now: Long, section: String? = this.section): Item =
     copy(pos = pos, section = section, posVersion = Version(maxOf(now, (posVersion?.ts ?: 0) + 1), deviceId))
 
+/** Returns this item with [note] (blank removes it); doesn't create a content version. */
+fun Item.withNote(note: String, deviceId: String, now: Long): Item =
+    copy(note = note.trim().ifEmpty { null }, noteVersion = Version(maxOf(now, (noteVersion?.ts ?: 0) + 1), deviceId))
+
 private fun Item.sameContentAs(other: Item) =
     text == other.text && checked == other.checked && deleted == other.deleted && date == other.date && time == other.time
 
@@ -64,6 +68,9 @@ fun TodoList.merge(remote: Collection<Item>): MergeResult {
         // version that didn't know sections), so a phone that lost them gets them back.
         val latestMove = maxOf(l, r, compareBy<Item, Version?>(nullsFirst()) { it.posVersion }.thenBy { it.section != null })
         merged = merged.copy(pos = latestMove.pos, posVersion = latestMove.posVersion, section = latestMove.section)
+        // So is the note: the latest wins, and one that came through a version without notes doesn't count.
+        val latestNote = maxOf(l, r, compareBy(nullsFirst()) { it.noteVersion })
+        merged = merged.copy(note = latestNote.note, noteVersion = latestNote.noteVersion)
         if (merged != l) {
             items[r.id] = merged
             accepted += merged

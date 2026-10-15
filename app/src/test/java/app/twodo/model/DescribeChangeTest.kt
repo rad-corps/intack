@@ -50,6 +50,24 @@ class DescribeChangeTest {
     }
 
     @Test
+    fun noteChangesAreDescribedAndCreditedToWhoeverWroteThem() {
+        val noted = milk.withNote("The oat one, not the soy one, from the shop on the corner", "B", 300)
+        assertEquals("added a note to Milk: The oat one, not the soy one, from the shop on the corner", describeChange(milk, noted))
+        val longer = noted.withNote("Oat\nTwo cartons", "B", 400)
+        assertEquals("changed the note on Milk: Oat…", describeChange(noted, longer))
+        assertEquals("removed the note from Milk", describeChange(longer, longer.withNote("", "B", 500)))
+
+        // The item's own version is still Adam's; the note is Sam's.
+        val entry = auditEntryFor(milk, noted, byName = "Sam")!!
+        assertEquals("B", entry.by)
+        assertEquals("Sam", entry.byName)
+        assertEquals(300L, entry.ts)
+        assertEquals("milk/note/300/B", entry.id)
+        assertEquals(Version(300, "B"), changeVersion(milk, noted))
+        assertEquals(milk.version, changeVersion(null, milk))
+    }
+
+    @Test
     fun concurrentDiaryEditsToDifferentFieldsAreReportedAndDescribed() {
         val dentist = milk.copy(id = "d", text = "Dentist", date = "2026-10-09", time = "15:00")
         val movedOnA = dentist.edited("A", "Adam", 200) { copy(date = "2026-10-10") }
