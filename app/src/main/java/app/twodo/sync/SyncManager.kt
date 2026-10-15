@@ -116,6 +116,7 @@ class SyncManager(context: Context, private val repo: ListRepository, private va
     private val http = OkHttpClient.Builder().pingInterval(20, TimeUnit.SECONDS).build()
     /** Off screen: a ping every few minutes keeps the connection open without waking the radio often. */
     private val quietHttp = http.newBuilder().pingInterval(BACKGROUND_PING_S, TimeUnit.SECONDS).build()
+    private val wake = Wake(http)
     private val peerId = ListSwarm.randomId()
     private val factory by lazy {
         PeerConnectionFactory.initialize(PeerConnectionFactory.InitializationOptions.builder(appContext).createInitializationOptions())
@@ -198,6 +199,7 @@ class SyncManager(context: Context, private val repo: ListRepository, private va
         scope.launch {
             repo.localEdits.collect { edit ->
                 publishToRelays(edit.listId, SyncMessage.Items(listOf(edit.item), audit = listOfNotNull(edit.audit)), secret = edit.secret)
+                wake.send(ListKeys(edit.secret).wakeTopic, urgent = repo.lists.value[edit.listId]?.kind == SpaceKind.CHAT)
                 val swarm = swarms[edit.listId] ?: return@collect
                 swarm.openPeers.forEach { sendItems(swarm, it, listOf(edit.item), listOfNotNull(edit.audit)) }
             }

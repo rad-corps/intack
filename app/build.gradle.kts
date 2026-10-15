@@ -16,6 +16,8 @@ android {
         targetSdk = 36
         versionCode = providers.gradleProperty("twodo.versionCode").get().toInt()
         versionName = providers.gradleProperty("twodo.versionName").get()
+        // The wake server's address (server/wake); empty until it's deployed, which turns wake-ups off.
+        buildConfigField("String", "WAKE_URL", "\"${providers.gradleProperty("twodo.wakeUrl").getOrElse("")}\"")
     }
 
     // Release signing key lives outside the repo; see README. Without it, release builds are unsigned.

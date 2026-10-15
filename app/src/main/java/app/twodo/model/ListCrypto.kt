@@ -14,6 +14,9 @@ class ListKeys(secret: String) {
     /** 20-character room id announced to trackers. Reveals nothing about the secret. */
     val topic: String = sha256("twodo/topic/$secret").joinToString("") { "%02x".format(it) }.take(20)
 
+    /** Push topic for wake-ups (server/wake): "w" + 32 hex characters. Reveals nothing about the secret. */
+    val wakeTopic: String = "w" + sha256("twodo/wake/$secret").joinToString("") { "%02x".format(it) }.take(32)
+
     fun encrypt(plaintext: String): String {
         val iv = ByteArray(IV_BYTES).also { random.nextBytes(it) }
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
