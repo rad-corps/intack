@@ -354,13 +354,14 @@ private fun DayPage(
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
         items(entries, key = { it.id }) { entry ->
             val background by animateColorAsState(
-                if (entry.id in highlighted) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
+                if (entry.id in highlighted) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
                 animationSpec = tween(600),
                 label = "highlight",
             )
-            Row(
-                Modifier.fillMaxWidth().background(background).clickable { onOpen(entry) }
-                    .padding(horizontal = 20.dp, vertical = 12.dp),
+            StyledRow(
+                fill = background,
+                onClick = { onOpen(entry) },
+                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.Top,
             ) {
                 Text(

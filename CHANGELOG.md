@@ -5,6 +5,11 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+**One look everywhere.** The style you or your group choose (cards, lines, outlined or plain) now
+applies to the groups on the home screen, the lists in a group, the calendar and group settings,
+not just to list items. Cards no longer show a darker band inside them with see-through themes
+such as Woodland.
+
 ## v0.6.35 — 2026-10-16
 
 **When each list was made and last changed.** Lists now show "Created Mon 12 Oct · edited 5 min

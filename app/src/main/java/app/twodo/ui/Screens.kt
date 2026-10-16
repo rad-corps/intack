@@ -702,10 +702,7 @@ internal fun ListBody(app: TwoDoApp, list: TodoList, status: SyncStatus, onBack:
                         }
                         return@ReorderableItem
                     }
-                    Row(
-                        Modifier.fillMaxWidth().listRow(rowStyle, background, MaterialTheme.colorScheme.surfaceContainerHigh).padding(start = 8.dp, end = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
+                    StyledRow(fill = background, contentPadding = PaddingValues(start = 8.dp, end = 4.dp)) {
                         // The checkbox ticks; the words open the item to change or delete it.
                         Checkbox(
                             checked = item.checked,

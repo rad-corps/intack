@@ -23,8 +23,6 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -81,13 +79,15 @@ internal fun HomeScreen(
         },
         snackbarHost = { SnackbarHost(snackbar) },
     ) { padding ->
-        LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        // Rows run edge to edge in the chosen style (cards bring their own margin); the rest keeps 16dp.
+        val margin = Modifier.padding(horizontal = 16.dp)
+        LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(vertical = 16.dp)) {
             if (calendars.isNotEmpty()) {
-                item { SectionTitle("Today") }
-                item { UpcomingSchedule(calendars, onOpen) }
-                item { Spacer(Modifier.size(8.dp)) }
+                item { Box(margin.padding(vertical = 4.dp)) { SectionTitle("Today") } }
+                item { Box(margin) { UpcomingSchedule(calendars, onOpen) } }
+                item { Spacer(Modifier.size(16.dp)) }
             }
-            if (navigation.groups.isNotEmpty()) item { SectionTitle("Groups") }
+            if (navigation.groups.isNotEmpty()) item { Box(margin.padding(vertical = 4.dp)) { SectionTitle("Groups") } }
             items(navigation.groups, key = { it.id }) { group ->
                 GroupCard(app, group, lists, status[group.id]) { navigation.onSwitch(group.id) }
             }
@@ -98,7 +98,7 @@ internal fun HomeScreen(
             // Lists outside groups still work (and invites to one still arrive), but out of the way.
             if (others.isNotEmpty()) {
                 item {
-                    TextButton(onClick = navigation.onOtherLists, modifier = Modifier.padding(top = 8.dp)) {
+                    TextButton(onClick = navigation.onOtherLists, modifier = margin.padding(top = 8.dp)) {
                         Text("Lists outside groups (${others.size})", style = MaterialTheme.typography.bodySmall)
                     }
                 }
@@ -113,31 +113,25 @@ private fun GroupCard(app: TwoDoApp, group: TodoList, lists: Map<String, TodoLis
     val appThemeId by app.appTheme.collectAsStateWithLifecycle()
     val look = rememberLook(app, group, themeById(appThemeId))
     val colors = look.theme.colors
-    Card(
-        onClick = onClick,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.9f)),
-        shape = RoundedCornerShape(16.dp),
-    ) {
-        Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(56.dp).clip(RoundedCornerShape(14.dp)).background(colors.primaryContainer), contentAlignment = Alignment.Center) {
-                val photo = look.photo
-                if (photo != null) Image(photo, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                else Icon(Icons.Outlined.Groups, null, tint = colors.onPrimaryContainer)
-            }
-            Spacer(Modifier.width(14.dp))
-            Column(Modifier.weight(1f)) {
-                Text(group.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(
-                    groupSummary(group, lists),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            SyncDot(status)
-            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.outline)
+    StyledRow(onClick = onClick, contentPadding = PaddingValues(12.dp)) {
+        Box(Modifier.size(56.dp).clip(RoundedCornerShape(14.dp)).background(colors.primaryContainer), contentAlignment = Alignment.Center) {
+            val photo = look.photo
+            if (photo != null) Image(photo, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+            else Icon(Icons.Outlined.Groups, null, tint = colors.onPrimaryContainer)
         }
+        Spacer(Modifier.width(14.dp))
+        Column(Modifier.weight(1f)) {
+            Text(group.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                groupSummary(group, lists),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        SyncDot(status)
+        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.outline)
     }
 }
 
@@ -158,10 +152,7 @@ private fun groupSummary(group: TodoList, lists: Map<String, TodoList>): String 
 
 @Composable
 private fun HomeRow(icon: ImageVector, title: String, detail: String, onClick: () -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable(onClick = onClick).padding(horizontal = 8.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
+    StyledRow(onClick = onClick) {
         Icon(icon, null, tint = MaterialTheme.colorScheme.primary)
         Spacer(Modifier.width(16.dp))
         Column(Modifier.weight(1f)) {

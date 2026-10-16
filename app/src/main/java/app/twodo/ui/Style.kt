@@ -1,6 +1,14 @@
 package app.twodo.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ColorScheme
@@ -9,7 +17,11 @@ import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.ClipOp
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.addOutline
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
@@ -106,12 +118,37 @@ fun resolveStyle(style: ListStyle, colors: ColorScheme): ResolvedStyle {
 }
 
 /**
+ * One row in the chosen style: list items, the lists in a group, groups on the home screen,
+ * calendar entries, people and settings all use it, so a look applies to every screen alike.
+ * [fill] is a highlight behind it; [contentPadding] sits inside the row, under the click ripple.
+ */
+@Composable
+fun StyledRow(
+    modifier: Modifier = Modifier,
+    fill: Color = Color.Transparent,
+    onClick: (() -> Unit)? = null,
+    contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = LocalListStyle.current.spacing),
+    verticalAlignment: Alignment.Vertical = Alignment.CenterVertically,
+    content: @Composable RowScope.() -> Unit,
+) {
+    Row(
+        modifier.fillMaxWidth()
+            .listRow(LocalListStyle.current, fill, MaterialTheme.colorScheme.surfaceContainerHigh)
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .padding(contentPadding),
+        verticalAlignment = verticalAlignment,
+        content = content,
+    )
+}
+
+/**
  * How one list row (item or heading) sits in the list: plain, with a line under it, as a card, or
  * outlined. [fill] is the row's own background (e.g. a highlight); [cardColor] is used for cards.
+ * Use [StyledRow] rather than this where you can.
  */
 fun Modifier.listRow(style: ResolvedStyle, fill: Color, cardColor: Color): Modifier = when (style.items) {
     ITEMS_CARDS -> padding(horizontal = 12.dp, vertical = 4.dp)
-        .shadow(style.shadow, style.shape, clip = false)
+        .outerShadow(style.shadow, style.shape)
         .clip(style.shape)
         .background(if (fill != Color.Transparent && fill != Color.Unspecified) fill else (style.itemColor ?: cardColor).halved())
         .styledBorder(style)
@@ -129,6 +166,27 @@ fun Modifier.listRow(style: ResolvedStyle, fill: Color, cardColor: Color): Modif
         }
     else -> background(style.itemColor?.halved()?.takeIf { fill == Color.Transparent || fill == Color.Unspecified } ?: fill)
 }
+
+/**
+ * A soft shadow around [shape], drawn only outside it. Android's own elevation shadow is a solid
+ * shape under the card, and cards are see-through (see [halved]), so its dark middle showed through
+ * as a band inside every card.
+ */
+private fun Modifier.outerShadow(elevation: Dp, shape: Shape): Modifier = if (elevation <= 0.dp) this else drawBehind {
+    val own = Path().apply { addOutline(shape.createOutline(size, layoutDirection, this@drawBehind)) }
+    clipPath(own, ClipOp.Difference) {
+        val reach = elevation.toPx() * 1.5f
+        // Rings growing outwards, each faint, so it darkens towards the card and fades away from it;
+        // a little lower than the card, as if lit from above.
+        for (i in SHADOW_RINGS downTo 1) {
+            val grow = reach * i / SHADOW_RINGS
+            val ring = shape.createOutline(Size(size.width + grow * 2, size.height + grow * 2), layoutDirection, this@drawBehind)
+            translate(-grow, -grow + elevation.toPx() / 2) { drawOutline(ring, Color.Black.copy(alpha = 0.025f)) }
+        }
+    }
+}
+
+private const val SHADOW_RINGS = 6
 
 /** Item backgrounds sit at half their opacity, so the page or photo shows through. */
 private fun Color.halved() = copy(alpha = alpha * 0.5f)

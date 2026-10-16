@@ -149,9 +149,9 @@ internal fun ScheduleView(app: TwoDoApp, sources: List<ScheduleSource>, modifier
         days.forEach { (date, entries) ->
             item(key = "day-$date") { DayHeading(date, today, onDay) }
             items(entries, key = { "${it.source.list.id}/${it.item.id}" }) { entry ->
-                Row(
-                    Modifier.fillMaxWidth().clickable { editing = entry.source.list.id to entry.item.id }
-                        .padding(start = 20.dp, end = 16.dp, top = 10.dp, bottom = 10.dp),
+                StyledRow(
+                    onClick = { editing = entry.source.list.id to entry.item.id },
+                    contentPadding = PaddingValues(start = 20.dp, end = 16.dp, top = 10.dp, bottom = 10.dp),
                     verticalAlignment = Alignment.Top,
                 ) {
                     Text(

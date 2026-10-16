@@ -42,8 +42,6 @@ import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -272,34 +270,28 @@ private fun ListsTab(app: TwoDoApp, group: TodoList, lists: Map<String, TodoList
     var creating by remember { mutableStateOf(false) }
     var showArchived by rememberSaveable { mutableStateOf(false) }
     Column(Modifier.fillMaxSize()) {
-        LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(vertical = 8.dp)) {
             val (archived, active) = group.listRefs.partition { ref -> ref.spaceId?.let { lists[it] }?.archived == true }
             items(active + if (showArchived) archived else emptyList(), key = { it.id }) { ref ->
                 if (ref === archived.firstOrNull()) ArchivedHeader(archived.size, expanded = true) { showArchived = false }
                 val list = ref.spaceId?.let { lists[it] }
-                Card(
-                    onClick = { list?.let { onOpenSpace(it.id) } },
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.9f)),
-                    shape = RoundedCornerShape(16.dp),
-                ) {
-                    Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.primaryContainer),
-                            contentAlignment = Alignment.Center,
-                        ) { Icon(Icons.Outlined.Checklist, null, tint = MaterialTheme.colorScheme.primary) }
-                        Spacer(Modifier.width(14.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(ref.text, style = MaterialTheme.typography.titleMedium)
-                            Text(
-                                list?.let { toDoSummary(it) } ?: "Getting it…",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            // Tells apart lists with the same name (this week's Groceries from last week's).
-                            list?.timesLine(ref)?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                        }
-                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.outline)
+                StyledRow(onClick = { list?.let { onOpenSpace(it.id) } }) {
+                    Box(
+                        Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.primaryContainer),
+                        contentAlignment = Alignment.Center,
+                    ) { Icon(Icons.Outlined.Checklist, null, tint = MaterialTheme.colorScheme.primary) }
+                    Spacer(Modifier.width(14.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(ref.text, style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            list?.let { toDoSummary(it) } ?: "Getting it…",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        // Tells apart lists with the same name (this week's Groceries from last week's).
+                        list?.timesLine(ref)?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                     }
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.outline)
                 }
             }
             if (archived.isNotEmpty() && !showArchived) item { ArchivedHeader(archived.size, expanded = false) { showArchived = true } }
@@ -440,12 +432,7 @@ internal fun SectionTitle(text: String) {
 
 @Composable
 private fun PersonRow(id: String, name: String, detail: String, here: Boolean) {
-    val style = LocalListStyle.current
-    Row(
-        Modifier.fillMaxWidth().listRow(style, Color.Transparent, MaterialTheme.colorScheme.surfaceContainerHigh)
-            .padding(horizontal = 16.dp, vertical = (style.spacing - 4.dp).coerceAtLeast(4.dp)),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
+    StyledRow(contentPadding = PaddingValues(horizontal = 16.dp, vertical = (LocalListStyle.current.spacing - 4.dp).coerceAtLeast(4.dp))) {
         Avatar(id, name)
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
@@ -479,12 +466,7 @@ internal fun Avatar(id: String, name: String, size: Int = 44) {
 @Composable
 private fun SettingRow(icon: ImageVector, title: String, detail: String, danger: Boolean = false, onClick: () -> Unit) {
     val tint = if (danger) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
-    val style = LocalListStyle.current
-    Row(
-        Modifier.fillMaxWidth().listRow(style, Color.Transparent, MaterialTheme.colorScheme.surfaceContainerHigh)
-            .clickable(onClick = onClick).padding(vertical = style.spacing, horizontal = 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
+    StyledRow(onClick = onClick) {
         Icon(icon, null, tint = if (danger) tint else MaterialTheme.colorScheme.primary)
         Spacer(Modifier.width(16.dp))
         Column {
