@@ -89,6 +89,8 @@ dependencies {
     implementation("fr.acinq.secp256k1:secp256k1-kmp-jni-android:0.24.0")
     implementation(platform("com.google.firebase:firebase-bom:35.0.2"))
     implementation("com.google.firebase:firebase-messaging")
+    // Firebase brings an old fragment library; the permission request (ActivityResult API) needs 1.3+.
+    implementation("androidx.fragment:fragment:1.9.1")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("fr.acinq.secp256k1:secp256k1-kmp-jni-jvm:0.24.0")
