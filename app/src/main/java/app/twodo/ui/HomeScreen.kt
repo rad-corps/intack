@@ -40,6 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -82,6 +83,7 @@ internal fun HomeScreen(
         // Rows run edge to edge in the chosen style (cards bring their own margin); the rest keeps 16dp.
         val margin = Modifier.padding(horizontal = 16.dp)
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(vertical = 16.dp)) {
+            item { MovedBanner() }
             if (calendars.isNotEmpty()) {
                 item { Box(margin.padding(vertical = 4.dp)) { SectionTitle("Today") } }
                 item { Box(margin) { UpcomingSchedule(calendars, onOpen) } }
@@ -148,6 +150,25 @@ private fun groupSummary(group: TodoList, lists: Map<String, TodoList>): String 
         "$toDo to do",
         if (people.isEmpty()) "just you so far" else "with ${joinNames(people)}",
     ).joinToString(" · ")
+}
+
+/** TwoDo is now Intack, a separate app: point people at it and say how to bring their groups across. */
+@Composable
+private fun MovedBanner() {
+    val uri = LocalUriHandler.current
+    StyledRow(fill = MaterialTheme.colorScheme.primaryContainer, onClick = { uri.openUri("https://github.com/rad-corps/intack/releases/latest") }, contentPadding = PaddingValues(16.dp)) {
+        Column(Modifier.weight(1f)) {
+            Text("TwoDo is now Intack", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
+            Text(
+                "This app won't get more updates. Tap here to get Intack (add github.com/rad-corps/intack in Obtainium). " +
+                    "Then bring each group across: open it here, tap Invite, then Send link, then Copy. In Intack, tap Join with an invite and paste it. " +
+                    "Once your groups show up in Intack you can remove TwoDo.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+            )
+        }
+    }
+    Spacer(Modifier.size(8.dp))
 }
 
 @Composable

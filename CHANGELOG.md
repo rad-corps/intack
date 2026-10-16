@@ -5,6 +5,11 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+**TwoDo is now Intack.** This is the last TwoDo update. Intack is the same app under its new name,
+and installs as a separate app: add github.com/rad-corps/intack in Obtainium. Then bring each group
+across with an invite from TwoDo (open the group, Invite, Send link, Copy; in Intack, Join with an
+invite and paste). Once your groups show up in Intack you can remove TwoDo.
+
 ## v0.6.36 — 2026-10-16
 
 **One look everywhere.** The style you or your group choose (cards, lines, outlined or plain) now
