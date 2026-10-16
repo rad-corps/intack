@@ -88,6 +88,7 @@ import app.twodo.model.TodoList
 import app.twodo.model.calendarRef
 import app.twodo.model.isJoining
 import app.twodo.model.listRefs
+import app.twodo.model.timesLine
 import app.twodo.model.unreadMessages
 import app.twodo.sync.SyncStatus
 import kotlinx.coroutines.launch
@@ -294,6 +295,8 @@ private fun ListsTab(app: TwoDoApp, group: TodoList, lists: Map<String, TodoList
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
+                            // Tells apart lists with the same name (this week's Groceries from last week's).
+                            list?.timesLine(ref)?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                         }
                         Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.outline)
                     }

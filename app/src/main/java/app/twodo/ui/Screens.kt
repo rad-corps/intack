@@ -152,6 +152,7 @@ import app.twodo.model.describe
 import app.twodo.model.indexAmongAll
 import app.twodo.model.offerArchive
 import app.twodo.model.pendingStatusRequest
+import app.twodo.model.timesLine
 import com.google.zxing.BarcodeFormat
 import com.journeyapps.barcodescanner.BarcodeEncoder
 import com.journeyapps.barcodescanner.ScanContract
@@ -446,6 +447,7 @@ private fun ListsScreen(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
+                        list.timesLine()?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                     }
                     if (!list.archived) SyncDot(status[list.id])
                 }

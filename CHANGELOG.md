@@ -5,6 +5,9 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+**When each list was made and last changed.** Lists now show "Created Mon 12 Oct · edited 5 min
+ago" under their name, so this week's Groceries is easy to tell from last week's.
+
 ## v0.6.34 — 2026-10-15
 
 **Much less battery in the background.** With the app closed, TwoDo kept direct connections to
