@@ -5,6 +5,8 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+## v0.7.3 — 2026-10-17
+
 **Groups on the calendar.** A new group's calendar now starts with "Group: Family created" (rather than
 "Calendar created"), and when someone joins a group, "Sam joined the group" goes on its calendar at the
 time they joined.
