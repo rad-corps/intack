@@ -2,3 +2,6 @@ gradlew text eol=lf
 *.bat text eol=crlf
 *.jar binary
 *.sh text eol=lf
+# Files that run on Linux servers keep Unix line endings on every checkout.
+server/** text eol=lf
+*.sh text eol=lf
