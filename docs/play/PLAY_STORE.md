@@ -1,83 +1,94 @@
 # Google Play — setup notes and drafts
 
-Everything needed to get the app onto Play's **internal testing** track (up to 100 testers by email,
-no public listing), and later production. The product name is Intack (renamed from TwoDo in v0.7.0).
+Everything needed to get Intack onto Play: **internal testing** first (up to 100 testers by email, no
+public listing), then the **closed test** a new personal account needs, then production.
+
+## Where we are (2026-10-17)
+
+- Developer account **rad-corps** (personal, account ID 5270221815478476760) is paid for.
+- Identity documents were submitted on 2026-10-17 and Google is reviewing them ("may take a few days";
+  they email the account owner). The contact phone number check unlocks after that.
+- No app has been created in Play Console yet.
 
 ## Checklist
 
-**You (once):**
-1. Create a Google Play developer account (one-off US$25) and complete identity verification.
-2. **Decide the app ID first** (see [App ID](#app-id--decide-before-the-first-upload)) — it can't change after the first upload.
-3. Create the app in Play Console: name, default language, *App* (not game), *Free* for now.
-4. **App signing:** when asked, choose to **use your own key** and upload the existing one from
-   `~/.twodo/release.jks` (Play Console walks you through exporting it with its PEPK tool). This keeps
-   Play and GitHub builds interchangeable, so people can switch without losing lists.
-5. Testing › Internal testing: create an email list with the testers' Google accounts, upload the
-   `.aab` that `scripts/release.ps1` prints, roll out, and send testers the opt-in link.
+**Adam (once verified):**
+1. Verify the contact phone number (Play Console home).
+2. Create the app: name **Intack**, default language English (Australia or United Kingdom), *App* (not
+   game), *Free* (see [Price](#price)).
+3. **App signing:** choose to **use your own key** and upload the existing one from
+   `~/.twodo/release.jks` (Play Console walks you through exporting it with its PEPK tool). Play builds
+   and GitHub builds are then interchangeable: people can switch without losing anything.
+4. Testing › Internal testing: create an email list of the testers' Google accounts, upload the `.aab`
+   that `scripts/release.ps1` prints, roll out, and send testers the opt-in link.
+5. For production: a **closed test with at least 12 testers for 14 days** (current rule for new personal
+   accounts; check Play Console), then apply for production access.
 
-**Forms (answers drafted below):** app access, ads, content rating, target audience, data safety,
-privacy policy URL, foreground service declaration, store listing.
+**Forms** (answers drafted below): app access, ads, content rating, target audience, data safety,
+privacy policy URL, foreground service, exact alarms, store listing.
 
-**Assets:** icon 512×512 (`docs/play/icon-512.png`, a placeholder from the launcher icon), phone
-screenshots (`docs/play/screenshots/`, 1080×2400), feature graphic 1024×500 (needed for production;
-make it once the name is chosen).
+**Assets:**
+- Icon 512×512: `docs/play/icon-512.png` (from the launcher icon).
+- Phone screenshots: `docs/play/screenshots/`, 1080×2400. **These still show the TwoDo name and the
+  older look: retake before uploading.** `scripts/screenshots.sh` makes them from demo data on two
+  emulators, but it replaces the debug app's data on both, so don't run it on the bigbox emulator
+  while that's in Adam's real groups. Use two fresh AVDs.
+- Feature graphic 1024×500: still to make (needed for production, optional for testing).
 
-The screenshots use demo family data and show the current name, so retake them after renaming: start two
-emulators with the debug build installed and run `bash scripts/screenshots.sh` (it replaces the debug
-app's data on both; `ADB=` can point at adb if it isn't on the PATH).
+## App ID
 
-For production later: new personal developer accounts must first run a **closed test with at least 12
-testers for 14 days** (check the current rule in Play Console); internal testing doesn't need that.
+`app.intack` (decided at the rename). It's in the Play Store URL and **can never change** for a Play
+listing.
 
-## App ID — decide before the first upload
+## Price
 
-The app ID is `app.intack` (decided at the rename). It's shown in the Play Store URL and **can never change** for a
-Play listing. Changing it later means a new app: everyone would have to install it fresh and their
-lists wouldn't carry over. It's invisible otherwise, so the name can change freely while the ID stays.
-
-If you'd like a neutral ID (e.g. `com.<you>.family` or matching a domain you own), change it **before**
-the first Play upload. Only GitHub/Obtainium installs exist today; they'd need a one-time reinstall
-(lists can be re-joined from the other phone).
+The app is free on GitHub. The earlier drafts said "pay once", which is the long-term plan, but the
+listing must match what Play charges. Until there's a paid version, list it as free and leave "pay
+once" out. (A free Play app can't later be made paid; a paid version would be a new listing or an
+in-app purchase. Decide before production.)
 
 ## Store listing (drafts)
 
-Written for people who just want a shared family list and calendar, without technical terms.
+Written for people who just want a shared family calendar and lists, without technical terms.
 
-**App name** (max 30 chars): *TBD*
+**App name** (max 30 chars): `Intack — family calendar & lists` (30), or plain `Intack`.
 
 **Short description** (max 80 chars):
 
-> Shared lists & family diary. Pay once — no subscription, no account, no ads.
+> Your family's calendar, lists and messages. No account, no ads, no data mining.
 
 **Full description** (max 4000 chars):
 
-> Keep the family organised — shopping lists, to-dos and a shared diary — without a subscription and
-> without handing your life to a big company.
+> Keep the family organised — a shared calendar, shopping lists, to-dos and messages — without
+> handing your life to a big company.
 >
-> **Pay once, use it for good.** No monthly fees, no account to create, no ads.
+> **No account. No ads.** Nothing to sign up for: open it, name your group and invite your family.
 >
-> **Your information stays yours.** Lists and diaries live on your family's phones, not in someone
-> else's cloud. When they're sent between phones they're locked with a key that only your family has.
+> **Your information stays yours.** Your group's calendar and lists live on your family's phones.
+> When they travel between phones they're locked with a key only your group has, so nobody in
+> between, including us, can read them.
 >
-> **Share in seconds.** Show a QR code, or send a link by message. Whoever you share with sees every
-> change as it happens — tick something off at the shops and it's ticked at home.
+> **Share in seconds.** Show a QR code, or send an invite by message. Everyone in the group sees each
+> change as it happens: tick something off at the shops and it's ticked at home.
 >
-> **Works even when you're apart.** Changes reach everyone, even if their phone was off at the time —
-> they catch up as soon as it's back on.
+> **Works even when you're apart.** Changes reach everyone, even if their phone was asleep or off at
+> the time, and without draining the battery.
 >
 > **What you get:**
-> • Shared lists — tick items off, drag them into order, see who ticked what
-> • A shared diary — swipe between days, add times, see the week at a glance
+> • A shared calendar with reminders and a morning summary of the day
+> • Shared lists: tick items off, drag them into order, see who did what
+> • Group messages
 > • A full history of who changed what, and when
-> • A notification when someone joins, or changes something while you're away
-> • Colour themes, so every list and diary can have its own look
+> • Notifications for what you care about, and nothing else
+> • Themes and backgrounds, for the whole app or each group
 >
-> No account. No sign-in. No subscription. Just your family's lists, on your family's phones.
+> No account. No sign-in. No ads. Just your family's plans, on your family's phones.
 
-**Category:** Productivity (alternative: Lifestyle). **Tags:** shopping list, to-do, family calendar.
+**Category:** Productivity (alternative: Lifestyle). **Tags:** family calendar, shared shopping list,
+to-do.
 
 **Contact details:** an email address is required (Play shows it publicly). **Website:**
-`https://intack.app/` (or a new site once named).
+`https://intack.app/`.
 
 **Privacy policy URL:** `https://intack.app/privacy/`
 
@@ -88,66 +99,49 @@ Written for people who just want a shared family list and calendar, without tech
 **Ads:** No, the app doesn't contain ads.
 
 **Content rating questionnaire:** Category *Utility, productivity, communication, or other*. Answer
-*No* to violence, sexuality, language, controlled substances, gambling. For "Does the app allow users to
-interact or exchange content?" answer **Yes** — users share lists and see each other's names and
-entries, but only with people they explicitly share a code with; there's no public content, chat with
-strangers, or location sharing. Expected rating: *Everyone* / PEGI 3.
+*No* to violence, sexuality, language, controlled substances, gambling. "Does the app allow users to
+interact or exchange content?" **Yes**: group members see each other's names, entries and messages,
+but only people the user invited; there's no public content, no contact with strangers and no
+location sharing. Expected rating: *Everyone* / PEGI 3.
 
-**Target audience:** 18 and over (keeps it out of the Families programme requirements; families use it
-through the adults' phones). Not designed for children.
+**Target audience:** 18 and over (keeps it out of the Families programme requirements; families use
+it through the adults' phones). Not designed for children.
 
-**Data safety** (recommended answers — check each against Play's current wording):
-- *Does your app collect or share any of the required user data types?* **No.** The developer receives
-  nothing. List contents leave the phone only **end-to-end encrypted** (WebRTC DTLS plus AES-GCM with the
-  list's key) to the people the user chose to share with, via relays that can't read them — Play's
-  guidance treats end-to-end encrypted data that only the sender and recipients can read as not
-  collected. No analytics, ads or account.
-- *Crash reports* are opt-in (Settings) and go only by email the user sends from their own mail app.
-  Play's guidance on user-initiated transfers through another app is worth checking at submission: if
-  it counts, declare **App info and performance › Crash logs** as collected, optional, for analytics
-  (app functionality), not shared, and the user's email address as received with it.
+**Data safety** (check each against Play's current wording at submission):
+- **Content** (lists, calendar, messages, names) leaves the phone only **end-to-end encrypted** with the
+  group's key, to the people the user invited, through relays that can't read it. Play's guidance
+  treats end-to-end encrypted data that only the sender and recipients can read as not collected.
+- **Wake pushes (Firebase Cloud Messaging).** The Firebase SDK sends Google a Firebase installation ID
+  and a push token, and the app subscribes to topics that are hashes of the group keys. Declare
+  **Device or other IDs: collected**, purpose **App functionality**, not shared, not optional (pushes
+  are how changes arrive). Check Firebase's own "Data disclosure" page for Messaging at submission and
+  match it. Analytics and ad-ID collection are switched off in the manifest.
+- **Our servers** (wake server on AWS Lambda, relay.intack.app on AWS Lightsail) see IP addresses, the
+  random topic or space codes and encrypted payloads, and keep only short-lived operational logs.
+  Nothing is used to identify anyone.
+- **Crash reports** are opt-in (Settings) and go only by email the user sends from their own mail app.
+  If Play counts that, declare **App info and performance › Crash logs**: collected, optional, app
+  functionality, not shared, with the user's email address.
 - *Is all user data encrypted in transit?* **Yes.**
-- *Do you provide a way for users to request that their data be deleted?* Data is only on users' devices:
-  remove a list in the app or uninstall.
-- Third-party servers involved (for the reviewer notes if asked): public WebTorrent trackers and STUN
-  servers (see IP address and a random list code), public Nostr relays (see IP, timing, size, encrypted
-  payload). None are operated by the developer.
+- *Can users ask for their data to be deleted?* Content is only on users' devices: remove a list or
+  group in the app, or uninstall. Relayed copies expire after 14 days.
+- Servers involved (for reviewer notes if asked): our wake server and relay; public Nostr relays;
+  public WebTorrent trackers and STUN servers; Google Firebase Cloud Messaging.
 
-**Foreground service declaration** (the app uses `FOREGROUND_SERVICE_SPECIAL_USE`):
-- *Description:* "Optional background sync (on by default, can be turned off in Settings). The app has
-  no server: shared lists sync directly between family members' phones, which requires an open
-  connection to be reachable. The foreground service keeps those connections open so changes made on
-  one phone reach the others promptly while the app is closed. A persistent notification tells the user
-  it's running."
-- *User impact if deferred:* family members' changes don't arrive until the app is opened, and the
-  other person's phone can't be reached to deliver theirs.
-- If Play pushes back, alternatives: `dataSync` type (limited to 6 h/day on Android 15+), or rely on the
-  15-minute background check plus relay delivery (which already works while the app is closed).
+**Foreground service** (`FOREGROUND_SERVICE_SPECIAL_USE`): optional **Sync in background**, off by
+default since v0.7.1.
+- *Description:* "Optional, off by default. Intack keeps a family's shared calendar and lists in sync
+  between their phones without storing their content on a server. Normally a push wakes the phone when
+  something changes. For phones where pushes don't arrive (for example without Google Play services),
+  the user can turn on Sync in background, which keeps the connection open so changes arrive promptly
+  while the app is closed. A persistent notification shows while it runs."
+- *User impact if deferred:* on those phones, family members' changes don't arrive until the app is
+  opened.
+- If Play pushes back: remove the option for Play builds and rely on pushes plus the 15-minute
+  background check.
 
-**Exact alarms** (`USE_EXACT_ALARM`): the app is a shared family calendar, and exact alarms deliver its
-reminders ("Swimming in 30 minutes") and the morning daily schedule on time — Play allows this permission
-for calendar apps. Without it Android may delay reminders by up to an hour.
+**Exact alarms** (`USE_EXACT_ALARM`): Intack is a shared family calendar, and exact alarms deliver its
+reminders ("Swimming in 30 minutes") and the morning summary on time. Play allows this permission for
+calendar apps. Without it, Android may delay reminders by up to an hour.
 
-**Camera permission:** used only to scan QR codes (declared by the QR library).
-
-## Name ideas
-
-The pitch: a family organiser like Cozi, but pay-once and your data stays on your phones. Names that say
-"family / home / ours" and "kept, not rented" without jargon. Check each on Google Play search and
-trademark databases before deciding.
-
-| Name | Why |
-|---|---|
-| **Kinboard** | Family (kin) + the fridge noticeboard |
-| **Hearthlist** | Home and hearth; warm, a little old-fashioned in a good way |
-| **Homeroom** | The family's shared room |
-| **Kept** | "Your lists, kept" — hints at ownership; short |
-| **Our Fridge** | Everyone knows the fridge door is where the family plans live |
-| **Kitchen Table** | Where families sort out the week |
-| **Nestlist** | Home/nest, friendly |
-| **Ours** | Ownership in one word (likely hard to get) |
-| **Famlist** | Plain and descriptive |
-| **Tribe Book** | Family + diary |
-
-Whatever it is: update `brand_name` in `app/src/main/res/values/strings.xml` (and the debug label next to
-it), the join/privacy pages under `docs/`, and the store listing.
+**Camera:** used only to scan invite QR codes (declared by the QR library).
