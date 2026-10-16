@@ -74,12 +74,13 @@ class DevBridge : BroadcastReceiver() {
                 }).joinToString("\n")
             }
             "say" -> group().let { g -> repo.sendMessage(g.id, arg("text")); synced(app); "sent to ${g.name}" }
+            "newgroup" -> repo.createGroup(arg("name")).let { g -> synced(app); "made group ${g.name} ${g.id}" }
             "newlist" -> {
                 val group = group()
                 val made = repo.addToGroup(group.id, arg("name")) ?: error("couldn't add to ${group.name}")
                 synced(app); "made ${made.name} ${made.id}"
             }
-            else -> error("unknown cmd $cmd; one of lists, show, add, tick, untick, note, messages, say, newlist")
+            else -> error("unknown cmd $cmd; one of lists, show, add, tick, untick, note, messages, say, newlist, newgroup")
         }
     }
 

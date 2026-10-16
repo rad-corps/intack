@@ -3,6 +3,7 @@ package app.intack.data
 import android.util.Log
 import app.intack.model.AuditEntry
 import app.intack.model.BLANK_LIST
+import app.intack.model.calendarRef
 import app.intack.model.Conflict
 import app.intack.model.GROCERIES
 import app.intack.model.GROUP_LOOK_ITEM
@@ -96,7 +97,7 @@ class ListRepository(private val dir: File, private val identity: Identity) {
     suspend fun createList(name: String, kind: SpaceKind = SpaceKind.LIST, template: ListTemplate = BLANK_LIST): TodoList =
         mutex.withLock { newSpace(name, kind, template = template) }
 
-    private suspend fun newSpace(name: String, kind: SpaceKind, groupId: String? = null, template: ListTemplate = BLANK_LIST): TodoList {
+    private suspend fun newSpace(name: String, kind: SpaceKind, groupId: String? = null, template: ListTemplate = BLANK_LIST, birthText: String? = null): TodoList {
         val fallback = when (kind) {
             SpaceKind.DIARY -> "Calendar"
             SpaceKind.GROUP -> "Family"
@@ -106,7 +107,7 @@ class ListRepository(private val dir: File, private val identity: Identity) {
         val list = TodoList(
             UUID.randomUUID().toString(), name.trim().ifEmpty { fallback }, ListKeys.newSecret(),
             createdHere = true, kind = kind, groupId = groupId, addedAt = System.currentTimeMillis(), sectioned = true,
-        ).let { if (kind == SpaceKind.DIARY) it.copy(items = birthEntry(it).let { e -> mapOf(e.id to e) }) else it }
+        ).let { if (kind == SpaceKind.DIARY) it.copy(items = birthEntry(birthText ?: "${it.name} created").let { e -> mapOf(e.id to e) }) else it }
             .let { if (kind == SpaceKind.LIST) it.copy(items = templateHeadings(template).associateBy { h -> h.id }) else it }
         save(list)
         return list
@@ -123,19 +124,38 @@ class ListRepository(private val dir: File, private val identity: Identity) {
         }
     }
 
-    /** A new calendar's first entry: when it was made ("Calendar created", today, at the time). */
-    private fun birthEntry(calendar: TodoList): Item {
+    /** A new calendar's first entry: when it was made ("Calendar created", or "Group: Family created"). */
+    private fun birthEntry(text: String): Item = eventEntry(UUID.randomUUID().toString(), text, System.currentTimeMillis())
+
+    /** A calendar entry recording something that happened at [at], on that day and at that time. */
+    private fun eventEntry(id: String, text: String, at: Long): Item {
         val now = System.currentTimeMillis()
-        val time = java.time.LocalTime.now()
+        val then = java.time.Instant.ofEpochMilli(at).atZone(java.time.ZoneId.systemDefault())
         return Item(
-            id = UUID.randomUUID().toString(),
-            text = "${calendar.name} created",
+            id = id,
+            text = text,
             createdAt = now,
             version = Version(now, identity.deviceId),
             editor = identity.deviceName,
-            date = LocalDate.now().toString(),
-            time = "%02d:%02d".format(time.hour, time.minute),
+            date = then.toLocalDate().toString(),
+            time = "%02d:%02d".format(then.hour, then.minute),
         )
+    }
+
+    /**
+     * Puts "Sam joined the group" on the calendar of each group this phone joined, once the group's
+     * calendar is known (its entries merge one by one, so a partial copy is fine; writing it also wakes the
+     * others' phones). Only the joining phone writes it, so it appears once; its id is fixed per
+     * person, so a second try (or joining again) changes that entry rather than adding another.
+     */
+    suspend fun addDueJoinNotes() {
+        val due = _lists.value.values.filter { it.kind == SpaceKind.GROUP && it.joinNoteDue != null }
+        for (group in due) {
+            val calendar = group.calendarRef?.spaceId?.let { _lists.value[it] } ?: continue
+            val at = group.joinNoteDue ?: continue
+            putLocal(calendar.id, eventEntry("joined-${identity.deviceId}", "${identity.deviceName} joined the group", at))
+            mutex.withLock { _lists.value[group.id]?.let { save(it.copy(joinNoteDue = null)) } }
+        }
     }
 
     /**
@@ -149,7 +169,7 @@ class ListRepository(private val dir: File, private val identity: Identity) {
         val group = newSpace(name, SpaceKind.GROUP)
         putGroupItem(group.id, nameItem(group.name))
         val existing = (listOfNotNull(calendarId) + listIds).mapNotNull { _lists.value[it] }.filter { it.kind != SpaceKind.GROUP && it.groupId == null }
-        if (existing.none { it.kind == SpaceKind.DIARY }) putGroupItem(group.id, spaceItem(newSpace("Calendar", SpaceKind.DIARY, group.id)))
+        if (existing.none { it.kind == SpaceKind.DIARY }) putGroupItem(group.id, spaceItem(newSpace("Calendar", SpaceKind.DIARY, group.id, birthText = "Group: ${group.name} created")))
         existing.forEach { list ->
             save(list.copy(groupId = group.id))
             putGroupItem(group.id, spaceItem(list))
@@ -381,7 +401,12 @@ class ListRepository(private val dir: File, private val identity: Identity) {
     /** Adds a shared list from an invite; returns the existing one if already joined. */
     suspend fun joinList(invite: Invite): TodoList = mutex.withLock {
         _lists.value[invite.listId]
-            ?: TodoList(invite.listId, invite.name, invite.secret, kind = invite.kind, addedAt = System.currentTimeMillis(), sectioned = true).also { save(it) }
+            ?: System.currentTimeMillis().let { now ->
+                TodoList(
+                    invite.listId, invite.name, invite.secret, kind = invite.kind, addedAt = now, sectioned = true,
+                    joinNoteDue = now.takeIf { invite.kind == SpaceKind.GROUP },
+                ).also { save(it) }
+            }
     }
 
     /** Shows or hides the list's headings on this phone. */

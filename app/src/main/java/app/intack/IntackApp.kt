@@ -80,7 +80,10 @@ class IntackApp : Application() {
         }
         // Subscribe to the wake push of every space this phone is in (and drop ones it left).
         scope.launch {
-            repo.lists.debounce(2_000).collect { lists -> WakeTopics.update(this@IntackApp, lists.values.map { it.secret }) }
+            repo.lists.debounce(2_000).collect { lists ->
+                WakeTopics.update(this@IntackApp, lists.values.map { it.secret })
+                repo.addDueJoinNotes()
+            }
         }
         scope.launch {
             repo.conflicts.collect { if (visibleActivities == 0 && identity.notifyConflicts) Notifications.showConflict(this@IntackApp, it) }

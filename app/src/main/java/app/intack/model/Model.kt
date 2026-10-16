@@ -124,6 +124,8 @@ data class TodoList(
     val statusAnswered: Version? = null,
     /** Local only: when this phone got the list (0 for lists from before this was recorded). */
     val addedAt: Long = 0,
+    /** Local only, for a group this phone joined: when, until "… joined the group" is on its calendar. */
+    val joinNoteDue: Long? = null,
     /** Local only: when the user last said "not now" to archiving it with everything ticked. */
     val archiveOfferDeclinedAt: Long = 0,
     /** Local only: this phone's look for a list outside any group (null: [themeId] and the app's background). */
