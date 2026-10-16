@@ -5,6 +5,8 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+## v0.6.35 — 2026-10-16
+
 **When each list was made and last changed.** Lists now show "Created Mon 12 Oct · edited 5 min
 ago" under their name, so this week's Groceries is easy to tell from last week's.
 
