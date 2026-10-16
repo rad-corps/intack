@@ -5,6 +5,8 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+## v0.7.1 — 2026-10-17
+
 **Phones can sleep.** When you change something, the other members' phones now get a tiny "something
 changed" push and fetch the change, instead of each phone staying connected all the time. Messages
 arrive within seconds, even when the other phone is asleep. The push carries no content, just a random
