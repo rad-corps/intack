@@ -5,6 +5,8 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+## v0.7.2 — 2026-10-17
+
 **Our own relay.** Intack now has its own relay, relay.intack.app, alongside the public ones, so
 changes get through even when the free relays are busy or slow. Like the others it only ever sees
 encrypted data, and it refuses anything that isn't Intack's.
