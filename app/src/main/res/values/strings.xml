@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- The product name, used everywhere in the app. Rename here (the name isn't final yet). -->
-    <string name="brand_name">TwoDo</string>
+    <string name="brand_name">Intack</string>
     <string name="app_name">@string/brand_name</string>
     <!-- Where crash reports are emailed, if the user chooses to send them. -->
     <string name="support_email" translatable="false">hulbert.adam@gmail.com</string>

@@ -1,6 +1,6 @@
 # Built-in backgrounds
 
-Photos are CC0 (public domain dedication) or marked public domain (PDM); no permission or credit is needed, but thanks to the photographers all the same. The abstract-* images (Soft colours) and pixel-hills were generated for TwoDo (scripts/backgrounds/abstract.py, pixel_hills.py) and are under the app's licence.
+Photos are CC0 (public domain dedication) or marked public domain (PDM); no permission or credit is needed, but thanks to the photographers all the same. The abstract-* images (Soft colours) and pixel-hills were generated for Intack (scripts/backgrounds/abstract.py, pixel_hills.py) and are under the app's licence.
 
 | File | Photographer | Licence | Source |
 |---|---|---|---|

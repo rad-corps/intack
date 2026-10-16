@@ -1,4 +1,4 @@
-// TwoDo wake server: an AWS Lambda (Function URL) that turns "something changed in space X" into a
+// Intack wake server: an AWS Lambda (Function URL) that turns "something changed in space X" into a
 // content-free push through Firebase Cloud Messaging, so phones can sleep instead of staying
 // connected. It never sees list content, names or who is in a space: a phone sends only a topic
 // derived from the space's secret, and every member's phone subscribes to that topic itself.
@@ -75,7 +75,7 @@ export function wakeMessage(topic, urgent) {
         android: { priority: urgent ? "HIGH" : "NORMAL", ttl: `${TTL_S}s`, collapse_key: topic },
         apns: {
             headers: { "apns-priority": urgent ? "10" : "5", "apns-collapse-id": topic, "apns-expiration": String(Math.floor(Date.now() / 1000) + TTL_S) },
-            payload: { aps: urgent ? { alert: { title: "TwoDo", body: "New activity" }, "mutable-content": 1 } : { "content-available": 1 } },
+            payload: { aps: urgent ? { alert: { title: "Intack", body: "New activity" }, "mutable-content": 1 } : { "content-available": 1 } },
         },
     };
 }

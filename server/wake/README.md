@@ -26,8 +26,8 @@ phone A ──edit──▶ relays (encrypted, as now)
 
 ## Setup (once)
 
-1. **Firebase project** (free): console.firebase.google.com → add project "twodo" → add Android apps
-   `app.twodo` and `app.twodo.debug` → download `google-services.json` (not secret; it goes in `app/`).
+1. **Firebase project** (free): console.firebase.google.com → add project "intack" → add Android apps
+   `app.intack` and `app.intack.debug` → download `google-services.json` (not secret; it goes in `app/`).
    Then Project settings → Service accounts → Generate new private key: that JSON **is** secret, and
    only goes into the Lambda's environment.
 2. **Lambda**: Node.js 22, handler `index.handler`, 128 MB, 10 s timeout, environment variable

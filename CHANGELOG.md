@@ -5,6 +5,12 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+**TwoDo is now Intack.** Same app, new name, installed as a new app (`app.intack`), so it starts
+empty. To bring a group across, make an invite in TwoDo (open the group, Invite, Send link, Copy) and
+paste it into Intack under Join with an invite. Its lists, calendar and messages come with it. Once
+everything is there you can remove TwoDo. Invites now use intack.app links; old TwoDo invite links
+still work.
+
 ## v0.6.37 — 2026-10-16
 
 **TwoDo is now Intack.** This is the last TwoDo update. Intack is the same app under its new name,

@@ -7,7 +7,7 @@ download link gives the original. Others: the given url.
 import io, json, os, re, sys, urllib.request
 from PIL import Image
 
-UA = {"User-Agent": "Mozilla/5.0 (TwoDo background fetch)"}
+UA = {"User-Agent": "Mozilla/5.0 (Intack background fetch)"}
 picks = json.load(open(sys.argv[1]))
 out = sys.argv[2]
 os.makedirs(out, exist_ok=True)

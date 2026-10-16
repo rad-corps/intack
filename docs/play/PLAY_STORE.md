@@ -1,8 +1,7 @@
 # Google Play — setup notes and drafts
 
 Everything needed to get the app onto Play's **internal testing** track (up to 100 testers by email,
-no public listing), and later production. The product name isn't decided — "TwoDo" below is a
-placeholder; see [Name ideas](#name-ideas).
+no public listing), and later production. The product name is Intack (renamed from TwoDo in v0.7.0).
 
 ## Checklist
 
@@ -32,7 +31,7 @@ testers for 14 days** (check the current rule in Play Console); internal testing
 
 ## App ID — decide before the first upload
 
-The app ID is currently `app.twodo`. It's shown in the Play Store URL and **can never change** for a
+The app ID is `app.intack` (decided at the rename). It's shown in the Play Store URL and **can never change** for a
 Play listing. Changing it later means a new app: everyone would have to install it fresh and their
 lists wouldn't carry over. It's invisible otherwise, so the name can change freely while the ID stays.
 
@@ -78,9 +77,9 @@ Written for people who just want a shared family list and calendar, without tech
 **Category:** Productivity (alternative: Lifestyle). **Tags:** shopping list, to-do, family calendar.
 
 **Contact details:** an email address is required (Play shows it publicly). **Website:**
-`https://rad-corps.github.io/twodo/` (or a new site once named).
+`https://intack.app/` (or a new site once named).
 
-**Privacy policy URL:** `https://rad-corps.github.io/twodo/privacy/`
+**Privacy policy URL:** `https://intack.app/privacy/`
 
 ## App content forms
 

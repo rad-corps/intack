@@ -9,7 +9,7 @@ from PIL import Image, ImageDraw
 
 out = sys.argv[1]
 os.makedirs(out, exist_ok=True)
-UA = {"User-Agent": "TwoDo-background-search/1.0"}
+UA = {"User-Agent": "Intack-background-search/1.0"}
 
 
 def get(url, timeout=30):

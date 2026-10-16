@@ -11,12 +11,12 @@
 set -euo pipefail
 export MSYS_NO_PATHCONV=1
 ADB=${ADB:-adb}
-P=app.twodo.debug
+P=app.intack.debug
 
 q() { printf "'%s'" "${1//\'/\'\\\'\'}"; } # quotes an argument for the phone's shell
 send() { # cmd extras...
   local out
-  out=$($ADB shell "am broadcast -n $P/app.twodo.DevBridge -a app.twodo.DEV --es cmd $1 ${*:2}" | tr -d '\r')
+  out=$($ADB shell "am broadcast -n $P/app.intack.DevBridge -a app.intack.DEV --es cmd $1 ${*:2}" | tr -d '\r')
   # am prints: Broadcast completed: result=0, data="..."
   out=${out#*data=\"}
   printf '%s\n' "${out%\"}"
