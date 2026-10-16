@@ -5,6 +5,8 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+## v0.8.0 — 2026-10-17
+
 **A new look.** Intack has its own icon (a pin on pine green), a wordmark, and warmer default colours:
 paper and pine by day, deep green and sea mint by night. New installs start in the light look; you can
 change it under Settings. The welcome screen, the empty calendar and the invite page that opens from a
