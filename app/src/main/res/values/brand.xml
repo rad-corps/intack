@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Intack brand colours (design canvas "Wordmark, palette and type"); the app's themes are in ui/Theme.kt. -->
+<resources>
+    <color name="brand_pine">#24594F</color>
+</resources>

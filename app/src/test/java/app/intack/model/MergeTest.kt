@@ -183,6 +183,9 @@ class MergeTest {
         // So do invites made in TwoDo before the rename, so people can bring their groups across.
         assertEquals(expected, ShareLink.parse("Join “Groceries” on TwoDo: https://rad-corps.github.io/twodo/join/#id=${list.id}&name=Groceries&k=${list.secret}"))
         assertTrue(ShareLink.build(list).startsWith("https://intack.app/join/#"))
+        // The inviter's name rides along for the invite page and doesn't get in the way.
+        assertEquals(expected, ShareLink.parse(ShareLink.message(list, "Intack", from = "Jess Smith")))
+        assertTrue(ShareLink.build(list, from = "Jess Smith").endsWith("&by=Jess+Smith"))
     }
 
     @Test

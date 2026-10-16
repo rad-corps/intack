@@ -45,9 +45,9 @@ class Identity(context: Context) {
         if (knownColors[deviceId] != color) prefs.edit { putString("knownColors", Json.encodeToString(knownColors + (deviceId to color))) }
     }
 
-    /** The app's colour theme. Older versions had a dark mode switch; turning it off meant the light default. */
+    /** The app's colour theme: Intack Light unless chosen. Older versions had a dark mode switch, on by default. */
     var themeId: String
-        get() = prefs.getString("theme", null) ?: if (prefs.getBoolean("darkMode", true)) "twodo-dark" else "twodo-light"
+        get() = prefs.getString("theme", null) ?: if (prefs.getBoolean("darkMode", false)) "twodo-dark" else "twodo-light"
         set(value) = prefs.edit { putString("theme", value) }
 
     /** The old single "Notify me about changes" switch; now only the starting value for the change options below. */

@@ -180,7 +180,10 @@ internal fun GroupScreen(
             }
             when (tab) {
                 GroupTab.CALENDAR -> if (calendar != null) {
-                    DiaryBody(app, calendar, status[calendar.id] ?: SyncStatus(), Modifier.weight(1f))
+                    DiaryBody(
+                        app, calendar, status[calendar.id] ?: SyncStatus(), Modifier.weight(1f),
+                        onInvite = if (group.members.isEmpty()) ({ inviting = true }) else null,
+                    )
                 } else {
                     EmptyState(if (group.isJoining) "The calendar will appear once you've joined." else "No calendar yet.")
                 }
@@ -336,7 +339,7 @@ private fun ListsTab(app: IntackApp, group: TodoList, lists: Map<String, TodoLis
 
 private fun toDoSummary(list: TodoList): String {
     if (list.isJoining) return "Getting it…"
-    if (list.archived) return "Archived · not syncing"
+    if (list.archived) return "Archived · not updating"
     val things = list.visibleItems.filter { !it.heading }
     if (things.isEmpty()) return "Nothing on it yet"
     val left = things.count { !it.checked }
@@ -369,7 +372,7 @@ private fun GroupSettingsTab(
         item { PersonRow(app.identity.deviceId, "${app.identity.deviceName} (you)", "This phone", true) }
         items(people, key = { it.first }) { (id, name) ->
             val here = name in online
-            PersonRow(id, name, if (here) "In sync now" else "Not online right now", here)
+            PersonRow(id, name, if (here) "Online now" else "Not online right now", here)
         }
         item {
             if (people.isEmpty()) {

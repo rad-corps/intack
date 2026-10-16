@@ -45,6 +45,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.shadow
+import androidx.compose.foundation.layout.offset
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.intack.IntackApp
 import app.intack.model.Item
@@ -98,7 +103,14 @@ private val scheduleDayWithYear = DateTimeFormatter.ofPattern("EEEE d MMMM yyyy"
  * Past days are one tap away at the top.
  */
 @Composable
-internal fun ScheduleView(app: IntackApp, sources: List<ScheduleSource>, modifier: Modifier = Modifier, onDay: ((LocalDate) -> Unit)? = null) {
+internal fun ScheduleView(
+    app: IntackApp,
+    sources: List<ScheduleSource>,
+    modifier: Modifier = Modifier,
+    onDay: ((LocalDate) -> Unit)? = null,
+    /** Set while nobody else has joined: the empty calendar then suggests inviting the family first. */
+    onInvite: (() -> Unit)? = null,
+) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val is24Hour = remember { DateFormat.is24HourFormat(context) }
@@ -136,16 +148,6 @@ internal fun ScheduleView(app: IntackApp, sources: List<ScheduleSource>, modifie
                 }
             }
         }
-        if (days.isEmpty()) {
-            item {
-                Text(
-                    "Nothing coming up.\nTap Add to put something on the calendar.",
-                    Modifier.fillMaxWidth().padding(32.dp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                )
-            }
-        }
         days.forEach { (date, entries) ->
             item(key = "day-$date") { DayHeading(date, today, onDay) }
             items(entries, key = { "${it.source.list.id}/${it.item.id}" }) { entry ->
@@ -174,6 +176,10 @@ internal fun ScheduleView(app: IntackApp, sources: List<ScheduleSource>, modifie
                     }
                 }
             }
+        }
+        // Nothing planned yet, or only the app's own notes (made, joined), which show above it.
+        if (days.values.all { day -> day.all { it.item.isAutoNote } }) {
+            item { EmptyCalendar(onInvite, onAdd = { adding = true }) }
         }
     }
 
@@ -284,3 +290,42 @@ private fun NewEntrySheet(
         calendars = sources.map { it.label to it.color },
     )
 }
+
+/** Nothing on the calendar (design canvas "Empty calendar"): a pinned blank note and the next step. */
+@Composable
+private fun EmptyCalendar(onInvite: (() -> Unit)?, onAdd: () -> Unit) {
+    Column(
+        Modifier.fillMaxWidth().padding(horizontal = 32.dp, vertical = 40.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(20.dp),
+    ) {
+        Box(Modifier.size(120.dp).clearAndSetSemantics {}) {
+            Box(
+                Modifier.padding(14.dp).fillMaxSize().rotate(-4f).shadow(8.dp, RoundedCornerShape(14.dp), clip = false)
+                    .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(14.dp)),
+            )
+            PinDot(Brand.Marigold, 16.dp, Modifier.align(Alignment.TopCenter).offset(y = 8.dp))
+        }
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Nothing on yet", style = MaterialTheme.typography.headlineSmall.copy(fontFamily = Brand.Serif, fontSize = 24.sp))
+            Text(
+                if (onInvite != null) "Plans are better shared. Invite your family, then add the first one together."
+                else "Add the first plan for everyone to see.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (onInvite != null) {
+                BrandButton("Invite family", onClick = onInvite)
+                BrandTextButton("Add a plan", onClick = onAdd)
+            } else {
+                BrandButton("Add a plan", onClick = onAdd)
+            }
+        }
+    }
+}
+
+/** An entry the app wrote itself: a calendar or group being made, someone joining (ListRepository). */
+private val Item.isAutoNote: Boolean get() = id.startsWith("created-") || id.startsWith("joined-")

@@ -43,6 +43,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.intack.R
 import app.intack.IntackApp
@@ -72,7 +73,7 @@ internal fun HomeScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.brand_name), style = MaterialTheme.typography.titleLarge) },
+                title = { Wordmark(fontSize = 22.sp) },
                 colors = flatBar(),
                 actions = { IconButton(onClick = navigation.onSettings) { Icon(Icons.Outlined.Settings, "Settings") } },
             )

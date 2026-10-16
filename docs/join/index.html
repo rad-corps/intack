@@ -4,52 +4,151 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>Join an Intack list</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<title>Join on Intack</title>
 <style>
-  :root { --bg: #121413; --fg: #e2e4e2; --muted: #a9afac; --accent: #8fc9b4; --on-accent: #0f201a; --line: #2b302e; }
-  @media (prefers-color-scheme: light) { :root { --bg: #fafaf8; --fg: #1b1d1c; --muted: #575e5b; --accent: #2e6b5e; --on-accent: #fff; --line: #e1e4e2; } }
+  @font-face { font-family: "Young Serif"; src: url("../fonts/YoungSerif-Regular.ttf") format("truetype"); font-display: swap; }
+  @font-face { font-family: "Figtree"; src: url("../fonts/Figtree.ttf") format("truetype"); font-weight: 300 900; font-display: swap; }
+  :root {
+    --paper: #F7F3EC; --card: #FFFDF9; --ink: #1E2421; --muted: #5C635E; --line: #E4DED3;
+    --pine: #24594F; --on-pine: #FFFFFF; --marigold: #F2B544; --pin-base: #24594F; --pin-head: #F2B544;
+    --shadow: 0 1px 0 #E4DED3, 0 12px 32px rgba(30,36,33,0.08);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #141A18; --card: #1E2623; --ink: #EFEAE0; --muted: #A7ADA8; --line: #2E3834;
+      --pine: #7CC4B2; --on-pine: #141A18; --marigold: #F4C266; --pin-base: #EFEAE0; --pin-head: #F4C266;
+      --shadow: 0 1px 0 #2E3834, 0 12px 32px rgba(0,0,0,0.3);
+    }
+  }
   * { box-sizing: border-box; }
-  body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: var(--bg); color: var(--fg);
-         font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; padding: 24px 16px; }
-  main { width: 100%; max-width: 380px; text-align: center; }
-  h1 { font-size: 1.4rem; font-weight: 500; margin: 0 0 4px; }
-  p { color: var(--muted); margin: 0 0 24px; }
-  a.button, button { display: block; width: 100%; padding: 14px; border-radius: 12px; font: inherit; text-decoration: none;
-                     border: 1px solid var(--line); background: transparent; color: var(--fg); cursor: pointer; margin-bottom: 12px; }
-  a.primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); font-weight: 500; }
-  small { display: block; color: var(--muted); margin-top: 20px; }
+  html, body { margin: 0; background: var(--paper); color: var(--ink); }
+  body { font: 16px/1.5 "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 430px; min-height: 100vh; margin: 0 auto; padding: 20px 20px 24px; display: flex; flex-direction: column; gap: 18px; }
+  .serif { font-family: "Young Serif", Georgia, serif; font-weight: 400; }
+  .top { display: flex; align-items: center; justify-content: space-between; height: 32px; }
+  .wordmark { font-size: 22px; line-height: 1; color: var(--ink); text-decoration: none; }
+  .wordmark svg { height: 0.76em; width: 0.405em; margin: 0 0.015em; vertical-align: baseline; }
+  .pin-head { fill: var(--pin-head); } .pin-base { fill: var(--pin-base); }
+  .small { font-size: 13px; color: var(--muted); }
+  .card { background: var(--card); border-radius: 22px; overflow: hidden; box-shadow: var(--shadow); }
+  .band { height: 104px; position: relative; }
+  .band::after { content: ""; position: absolute; top: 14px; left: 50%; width: 14px; height: 14px; margin-left: -7px;
+                 border-radius: 50%; background: var(--marigold); box-shadow: 0 2px 3px rgba(30,36,33,0.25); }
+  .body { padding: 0 20px 20px; display: flex; flex-direction: column; gap: 14px; }
+  .faces { display: flex; margin-top: -26px; position: relative; }
+  .face { width: 52px; height: 52px; border-radius: 50%; border: 3px solid var(--card); display: flex; align-items: center;
+          justify-content: center; font-weight: 700; font-size: 18px; }
+  .face + .face { margin-left: -12px; }
+  .face.from { background: #24594F; color: #FFFFFF; }
+  .face.you { background: var(--line); color: var(--ink); border: 3px dashed var(--pine); font-weight: 600; font-size: 13px; }
+  .who { font-size: 15px; color: var(--muted); }
+  h1 { margin: 0; font-size: 34px; line-height: 1.1; overflow-wrap: anywhere; }
+  ul { list-style: none; margin: 0; padding: 4px 0 0; display: flex; flex-direction: column; gap: 10px; }
+  li { display: flex; align-items: center; gap: 12px; font-size: 15px; }
+  li svg { flex: none; stroke: var(--pine); }
+  .blurb { font-size: 15px; margin: 0; text-wrap: pretty; }
+  .actions { display: flex; flex-direction: column; gap: 12px; margin-top: auto; }
+  .button { display: flex; align-items: center; justify-content: center; min-height: 56px; border-radius: 16px; background: var(--pine);
+            color: var(--on-pine); font-size: 17px; font-weight: 600; text-decoration: none; border: 0; font-family: inherit; cursor: pointer; }
+  .quiet { display: flex; align-items: center; justify-content: center; min-height: 48px; border-radius: 16px; color: var(--pine);
+           font-size: 15px; font-weight: 600; text-decoration: none; background: none; border: 0; font-family: inherit; cursor: pointer; }
+  .steps { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; }
+  .step { display: flex; align-items: center; gap: 6px; }
+  .step b { width: 18px; height: 18px; border-radius: 50%; background: var(--pine); color: var(--on-pine); font-size: 11px;
+            display: flex; align-items: center; justify-content: center; }
+  .foot { display: flex; align-items: center; gap: 10px; border-top: 1px solid var(--line); padding-top: 14px; }
+  .foot span { flex-grow: 1; }
+  .foot a { color: var(--pine); font-weight: 600; white-space: nowrap; }
+  .foot svg { flex: none; stroke: var(--muted); }
+  [hidden] { display: none !important; }
 </style>
 </head>
 <body>
 <main>
-  <h1 id="title">Join an Intack list</h1>
-  <p id="sub">Open this list in Intack to see and tick it together.</p>
-  <a class="button primary" id="open" href="#">Open in Intack</a>
-  <button id="copy" type="button">Copy link to paste in Intack</button>
-  <a class="button" href="https://github.com/rad-corps/intack/releases/latest">Don't have Intack? Get it free</a>
-  <small>The list's key stays in this link and on your phones. It's never sent to this website.</small>
+  <div class="top">
+    <a class="wordmark serif" href="/" aria-label="Intack">In<svg viewBox="0 0 32 60" aria-hidden="true"><rect class="pin-head" x="3" y="0" width="26" height="6.5" rx="3.25"/><path class="pin-head" d="M8 6 H24 C21 9 19.5 11 19.5 14 C19.5 19 24 22 29 24 H3 C8 22 12.5 19 12.5 14 C12.5 11 11 9 8 6 Z"/><rect class="pin-base" x="1" y="23.5" width="30" height="4.5" rx="2.25"/><path class="pin-base" d="M14.6 28 H17.4 L16.6 58 Q16 60 15.4 58 Z"/></svg>ack</a>
+    <div class="small">Invitation</div>
+  </div>
+
+  <div class="card">
+    <div class="band" id="band"></div>
+    <div class="body">
+      <div class="faces">
+        <div class="face from" id="from-face" hidden></div>
+        <div class="face you">You</div>
+      </div>
+      <div>
+        <div class="who" id="who">You're invited to join</div>
+        <h1 class="serif" id="name">Intack</h1>
+      </div>
+      <ul id="what">
+        <li data-for="group diary"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg><span id="cal-label">The family calendar</span></li>
+        <li data-for="group list"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6.5h11M9 12h11M9 17.5h11"/><path d="M4 6.5l1 1 2-2M4 12l1 1 2-2"/><circle cx="5" cy="17.5" r="1"/></svg><span id="list-label">Shopping and to-do lists</span></li>
+        <li data-for="group"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a7.5 7.5 0 0 1-11 6.6L4 20l1.4-4.4A7.5 7.5 0 1 1 20 12z"/></svg>Messages between you</li>
+      </ul>
+    </div>
+  </div>
+
+  <p class="blurb">Intack is a private noticeboard for families. No account, no ads: your plans stay on your family's phones.</p>
+
+  <div class="actions" id="actions">
+    <a class="button" id="get" href="https://github.com/rad-corps/intack/releases/latest">Get Intack and join</a>
+    <div class="steps small">
+      <span class="step"><b>1</b>Install</span>
+      <span aria-hidden="true">→</span>
+      <span class="step"><b>2</b><span id="step2">You're in</span></span>
+    </div>
+    <a class="quiet" id="open" href="#">I already have Intack</a>
+    <button class="quiet" id="copy" type="button">Copy invite to paste in Intack</button>
+  </div>
+
+  <div class="foot small">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/></svg>
+    <span id="private">Only the people you share it with can see it.</span>
+    <a href="../privacy/">Who can see this?</a>
+  </div>
 </main>
 <script>
+  // Everything about the invite is after the "#", which browsers never send to this website.
   const params = new URLSearchParams(location.hash.slice(1));
-  const id = params.get('id'), key = params.get('k'), name = params.get('name') || 'Shared list';
+  const id = params.get('id'), key = params.get('k');
+  const name = params.get('name') || 'a shared list', kind = params.get('t') || 'list', from = params.get('by');
   const releases = 'https://github.com/rad-corps/intack/releases/latest';
+  const $ = (x) => document.getElementById(x);
+
   if (!id || !key) {
-    document.getElementById('title').textContent = 'This link is incomplete';
-    document.getElementById('sub').textContent = 'Ask for the list to be shared again.';
-    document.getElementById('open').style.display = 'none';
-    document.getElementById('copy').style.display = 'none';
+    $('who').textContent = 'This invite is incomplete';
+    $('name').textContent = 'Ask for it again';
+    $('what').hidden = true;
+    $('actions').hidden = true;
   } else {
-    document.getElementById('title').textContent = 'Join “' + name + '”';
-    if (params.get('t') === 'diary') document.getElementById('sub').textContent = 'Open this diary in Intack to see and add to it together.';
-    if (params.get('t') === 'group') document.getElementById('sub').textContent = 'Open this invite in Intack to share the group’s calendar and lists.';
-    // Pass every parameter through (id, name, k, and t for diaries) so newer link fields keep working.
+    document.title = 'Join ' + name + ' on Intack';
+    $('name').textContent = name;
+    $('who').textContent = from ? from + ' invited you to join' : "You're invited to join";
+    if (from) { $('from-face').hidden = false; $('from-face').textContent = from.trim().charAt(0).toUpperCase(); }
+    $('step2').textContent = kind === 'group' ? "You're in " + name : 'You can see it';
+    $('private').textContent = 'Only people in ' + name + ' can see this board.';
+    if (kind === 'diary') $('cal-label').textContent = 'A shared calendar';
+    if (kind === 'list') $('list-label').textContent = 'A shared list';
+    document.querySelectorAll('#what li').forEach((li) => { li.hidden = !li.dataset.for.split(' ').includes(kind); });
+
+    // A soft colour per invite, so each board looks like its own.
+    const colours = ['#B9CFC3', '#E7C9A9', '#C8C3DE', '#D9B8B0'];
+    let h = 0; for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+    $('band').style.background = colours[h % colours.length];
+
+    // Pass every field through, so newer invite fields keep working.
     const query = 'join?' + params.toString();
-    // Chrome on Android understands intent: links and falls back to the download page if Intack isn't installed.
-    document.getElementById('open').href = /Android/i.test(navigator.userAgent)
-      ? 'intent://' + query + '#Intent;scheme=intack;package=app.intack;S.browser_fallback_url=' + encodeURIComponent(releases) + ';end'
-      : 'intack://' + query;
-    document.getElementById('copy').onclick = async (e) => {
-      try { await navigator.clipboard.writeText(location.href); e.target.textContent = 'Copied — paste it in Intack › Join list'; }
+    if (/Android/i.test(navigator.userAgent)) {
+      // Chrome on Android opens Intack if it's installed, or the download page if not.
+      $('get').href = 'intent://' + query + '#Intent;scheme=intack;package=app.intack;S.browser_fallback_url=' + encodeURIComponent(releases) + ';end';
+      $('open').href = 'intack://' + query;
+    } else {
+      $('open').hidden = true;
+    }
+    $('copy').onclick = async (e) => {
+      try { await navigator.clipboard.writeText(location.href); e.target.textContent = 'Copied: paste it in Intack › Join with an invite'; }
       catch { e.target.textContent = 'Copy the address from the address bar'; }
     };
   }

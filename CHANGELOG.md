@@ -5,6 +5,12 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+**A new look.** Intack has its own icon (a pin on pine green), a wordmark, and warmer default colours:
+paper and pine by day, deep green and sea mint by night. New installs start in the light look; you can
+change it under Settings. The welcome screen, the empty calendar and the invite page that opens from a
+link are redesigned, and invites now say who sent them. Wording on the main screens no longer talks
+about "syncing".
+
 ## v0.7.3 — 2026-10-17
 
 **Groups on the calendar.** A new group's calendar now starts with "Group: Family created" (rather than

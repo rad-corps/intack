@@ -117,7 +117,7 @@ internal fun DiaryScreen(app: IntackApp, list: TodoList, status: SyncStatus, sna
 
 /** The calendar itself — day header, week strip, add bar and swipeable days — for a screen or a group tab. */
 @Composable
-internal fun DiaryBody(app: IntackApp, list: TodoList, status: SyncStatus, modifier: Modifier = Modifier) {
+internal fun DiaryBody(app: IntackApp, list: TodoList, status: SyncStatus, modifier: Modifier = Modifier, onInvite: (() -> Unit)? = null) {
     val names by app.sync.names.collectAsStateWithLifecycle()
     val highlighted = rememberRemoteHighlights(app, list.id)
     val scope = rememberCoroutineScope()
@@ -158,6 +158,7 @@ internal fun DiaryBody(app: IntackApp, list: TodoList, status: SyncStatus, modif
                     schedule = false
                     scope.launch { pager.scrollToPage(pageOf(day)) }
                 },
+                onInvite = onInvite,
             )
             return@Column
         }

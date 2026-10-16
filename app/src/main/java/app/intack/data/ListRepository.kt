@@ -125,7 +125,7 @@ class ListRepository(private val dir: File, private val identity: Identity) {
     }
 
     /** A new calendar's first entry: when it was made ("Calendar created", or "Group: Family created"). */
-    private fun birthEntry(text: String): Item = eventEntry(UUID.randomUUID().toString(), text, System.currentTimeMillis())
+    private fun birthEntry(text: String): Item = eventEntry("created-${UUID.randomUUID()}", text, System.currentTimeMillis())
 
     /** A calendar entry recording something that happened at [at], on that day and at that time. */
     private fun eventEntry(id: String, text: String, at: Long): Item {

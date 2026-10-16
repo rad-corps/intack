@@ -818,7 +818,7 @@ internal fun SpaceTopBar(app: IntackApp, list: TodoList, status: SyncStatus, onB
                         Spacer(Modifier.width(6.dp))
                     }
                     Text(
-                        if (list.archived) "Archived · not syncing" else status.summary(),
+                        if (list.archived) "Archived · not updating" else status.summary(),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -979,7 +979,7 @@ internal fun ShareDialog(app: IntackApp, list: TodoList, onDismiss: () -> Unit) 
     // Whoever connects to this list for the first time while the dialog is open.
     val membersBefore = remember(list.id) { list.members.keys }
     val newcomers = list.members.filterKeys { it !in membersBefore }.values
-    val link = remember(list.id) { ShareLink.build(list) }
+    val link = remember(list.id) { ShareLink.build(list, app.identity.deviceName.takeIf { app.identity.hasName }) }
     val isGroup = list.kind == SpaceKind.GROUP
     val brand = stringResource(R.string.brand_name)
     val qr = remember(link) { BarcodeEncoder().encodeBitmap(link, BarcodeFormat.QR_CODE, 720, 720).asImageBitmap() }
@@ -1021,7 +1021,7 @@ internal fun ShareDialog(app: IntackApp, list: TodoList, onDismiss: () -> Unit) 
         confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } },
         dismissButton = {
             TextButton(onClick = {
-                val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, ShareLink.message(list, context.getString(R.string.brand_name)))
+                val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, ShareLink.message(list, context.getString(R.string.brand_name), app.identity.deviceName.takeIf { app.identity.hasName }))
                 context.startActivity(Intent.createChooser(send, "Send link"))
             }) { Text("Send link") }
         },
@@ -1450,12 +1450,12 @@ internal const val HIGHLIGHT_MS = 2_500L
 /** Text size choices: label and scale on top of the phone's own font size. */
 private val TEXT_SIZES = listOf("Normal" to 1f, "Large" to 1.15f, "Larger" to 1.3f)
 
-/** Plain-words sync state: who we're in sync with, or why not. How it's connected doesn't matter here. */
+/** Plain-words state: who this phone is up to date with, or why not. How it's connected doesn't matter here. */
 internal fun SyncStatus?.summary(): String {
     if (this == null) return "Connecting…"
     val people = online()
     return when {
-        people.isNotEmpty() -> "In sync with ${joinNames(people)}"
+        people.isNotEmpty() -> "Up to date with ${joinNames(people)}"
         connecting -> "Connecting…"
         !online -> "Offline · changes will send later"
         trackersOnline == 0 && relaysOnline == 0 -> "Connecting…"
@@ -1477,7 +1477,7 @@ internal fun joinNames(names: List<String>): String = when (names.size) {
 
 private const val DELETE_EXPLAINED =
     "It's deleted from this phone, and %s is asked whether to delete theirs too. " +
-        "To just get it out of the way, archive it instead: it stops syncing, which saves battery, and you can bring it back any time."
+        "To just get it out of the way, archive it instead: it stops updating, which saves battery, and you can bring it back any time."
 
 /** "Archived (3)": opens or closes the archived lists below it. */
 @Composable
@@ -1507,8 +1507,8 @@ private fun ArchiveBanner(app: IntackApp, list: TodoList, onBack: () -> Unit) {
     ) {
         Column(Modifier.padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = if (list.archived) 12.dp else 4.dp)) {
             Text(
-                if (list.archived) "Archived on this phone, so it isn't syncing. To see the others' changes and send yours, bring it back from the ⋮ menu."
-                else "All done! Archive this list? It stops syncing, which saves battery, and you can bring it back any time.",
+                if (list.archived) "Archived on this phone, so it isn't updating. To see the others' changes and send yours, bring it back from the ⋮ menu."
+                else "All done! Archive this list? It stops updating, which saves battery, and you can bring it back any time.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSecondaryContainer,
             )
@@ -1540,8 +1540,8 @@ private fun StatusRequestDialog(app: IntackApp, lists: Map<String, TodoList>) {
         title = { Text("$who ${if (deleted) "deleted" else "archived"} “${list.name}”") },
         text = {
             Text(
-                "Do the same on this phone? Archived lists stop syncing, which saves battery, and you can bring them back any time. " +
-                    "If you keep it, it keeps syncing in the background, which uses some battery.",
+                "Do the same on this phone? Archived lists stop updating, which saves battery, and you can bring them back any time. " +
+                    "If you keep it, it keeps updating in the background, which uses some battery.",
             )
         },
         confirmButton = {

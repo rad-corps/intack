@@ -16,17 +16,19 @@ object ShareLink {
     const val WEB_PREFIX = "https://intack.app/join/#"
     private val linkPattern = Regex("""(?:(?:intack|twodo)://join\?|https://(?:intack\.app|rad-corps\.github\.io/twodo)/join/?#)(\S+)""")
 
-    fun build(list: TodoList): String =
+    /** The invite link; [from] (the inviter's name) is only shown on the invite page, never needed to join. */
+    fun build(list: TodoList, from: String? = null): String =
         "${WEB_PREFIX}id=${list.id}&name=${URLEncoder.encode(list.name, "UTF-8")}&k=${list.secret}" +
             when (list.kind) {
                 SpaceKind.DIARY -> "&t=diary"
                 SpaceKind.GROUP -> "&t=group"
                 // Messages are only ever shared with their group, never by a link of their own.
                 SpaceKind.LIST, SpaceKind.CHAT -> ""
-            }
+            } +
+            from?.takeIf { it.isNotBlank() }?.let { "&by=${URLEncoder.encode(it.trim(), "UTF-8")}" }.orEmpty()
 
     /** Message text to send along with the link; [appName] is the product name. */
-    fun message(list: TodoList, appName: String): String = "Join “${list.name}” on $appName: ${build(list)}"
+    fun message(list: TodoList, appName: String, from: String? = null): String = "Join “${list.name}” on $appName: ${build(list, from)}"
 
     /** Finds a share link anywhere in [text], e.g. a whole pasted message. */
     fun parse(text: String): Invite? {
