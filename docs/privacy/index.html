@@ -47,9 +47,17 @@
       your phone</strong> with the list's secret key, so the relays only see scrambled data, along with
       your internet address, the time and size of each message, and a random code for the list. Relayed
       messages are set to expire after 14 days.</li>
+    <li><strong>Wake-up pushes</strong>, so phones can sleep instead of staying connected. After a change,
+      your phone asks our small wake server to send an <strong>empty</strong> "something changed" push
+      through Google's Firebase Cloud Messaging to the other members' phones, which then fetch the
+      encrypted change from the relays. The push names only a random code derived from the list's secret
+      key; it carries no content, names or members. Our wake server (on Amazon Web Services) sees that
+      code, your internet address and the time, and keeps no record beyond short-lived error logs. Google
+      sees which of these codes your phone listens for and when pushes arrive. On phones without Google
+      Play services, no pushes are sent or received.</li>
   </ul>
   <p>The people you share with see the list's contents, the name you entered, and who changed what and when.</p>
-  <p>These servers are run by independent third parties, not by us; we don't control or receive their logs.</p>
+  <p>The trackers and relays are run by independent third parties, not by us; we don't control or receive their logs.</p>
 
   <h2>The share link page</h2>
   <p>Share links open a web page hosted on GitHub Pages that hands the link to the app. The list's details
@@ -61,13 +69,13 @@
     <li><strong>Photos</strong> — only the screenshot you choose, to read a QR code from it on your phone.</li>
     <li><strong>Notifications</strong> — to tell you when someone joins, leaves or changes a shared list.
       These are created on your phone.</li>
-    <li><strong>Background sync</strong> — keeps the app connected so changes reach you while it's closed.
-      You can turn it off in Settings.</li>
+    <li><strong>Background sync</strong> (off unless you turn it on in Settings) — keeps the app connected
+      so changes reach you while it's closed, without relying on wake-up pushes.</li>
   </ul>
 
   <h2>What we collect</h2>
   <p>Nothing automatically. The app has no account, no analytics and no advertising, and it doesn't send
-  any information to the developer by itself.</p>
+  any information to the developer by itself, apart from the content-free wake requests described above.</p>
   <p><strong>Crash reports, only if you choose.</strong> If the app closes unexpectedly, it notes the error on
   your phone. If you've turned on Settings › Offer to email crash reports, it offers to email a report to the
   developer; the email opens in your own email app so you can read it, and it's only sent if you send it. A

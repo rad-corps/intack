@@ -1191,7 +1191,7 @@ private fun SettingsDialog(app: IntackApp, onDismiss: () -> Unit, onNotification
                     Column(Modifier.weight(1f)) {
                         Text("Sync in background")
                         Text(
-                            "Stay reachable while the app is closed. Shows a permanent notification and uses some battery.",
+                            "Usually not needed: the others' phones wake this one when something changes. Turn on if changes arrive late. Shows a permanent notification and uses some battery.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -1332,7 +1332,7 @@ internal fun JoiningBanner(list: TodoList, status: SyncStatus) {
                 status.receiving || status.connecting || status.peerNames.isNotEmpty() || status.relayPeerNames.isNotEmpty() -> "Getting the $what…"
                 !status.online -> "Waiting for an internet connection…"
                 status.trackersOnline == 0 && status.relaysOnline == 0 -> "Connecting…"
-                else -> "Looking for the other phone… ${stringResource(R.string.brand_name)} needs to be open there, or have Sync in background on."
+                else -> "Looking for the other phone… ${stringResource(R.string.brand_name)} may need to be opened there."
             },
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,

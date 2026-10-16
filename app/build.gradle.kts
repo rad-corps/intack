@@ -4,6 +4,8 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
     id("org.jetbrains.kotlin.plugin.serialization")
+    // Reads google-services.json: the Firebase project used only for wake pushes (server/wake).
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -85,6 +87,8 @@ dependencies {
     implementation("com.journeyapps:zxing-android-embedded:4.3.0")
     implementation("sh.calvin.reorderable:reorderable:3.1.0")
     implementation("fr.acinq.secp256k1:secp256k1-kmp-jni-android:0.24.0")
+    implementation(platform("com.google.firebase:firebase-bom:35.0.2"))
+    implementation("com.google.firebase:firebase-messaging")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("fr.acinq.secp256k1:secp256k1-kmp-jni-jvm:0.24.0")

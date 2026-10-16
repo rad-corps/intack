@@ -14,6 +14,7 @@ import app.intack.sync.Notifications
 import app.intack.sync.SyncManager
 import app.intack.sync.SyncService
 import app.intack.sync.SyncWorker
+import app.intack.sync.WakeTopics
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -76,6 +77,10 @@ class IntackApp : Application() {
         // Calendar changes (from anyone) can move the next reminder; settle for a moment, then set it.
         scope.launch {
             repo.lists.debounce(2_000).collect { CalendarAlerts.reschedule(this@IntackApp) }
+        }
+        // Subscribe to the wake push of every space this phone is in (and drop ones it left).
+        scope.launch {
+            repo.lists.debounce(2_000).collect { lists -> WakeTopics.update(this@IntackApp, lists.values.map { it.secret }) }
         }
         scope.launch {
             repo.conflicts.collect { if (visibleActivities == 0 && identity.notifyConflicts) Notifications.showConflict(this@IntackApp, it) }

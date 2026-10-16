@@ -5,6 +5,14 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+**Phones can sleep.** When you change something, the other members' phones now get a tiny "something
+changed" push and fetch the change, instead of each phone staying connected all the time. Messages
+arrive within seconds, even when the other phone is asleep. The push carries no content, just a random
+code only your group's phones know (see the privacy page). Because of this, **Sync in background** is
+now off by default; turn it on in Settings if changes reach you late, or if your phone has no Google
+Play services. Also: the app no longer keeps re-sending stale "I'm online" notes to a relay that has
+asked it to slow down.
+
 ## v0.7.0 — 2026-10-16
 
 **TwoDo is now Intack.** Same app, new name, installed as a new app (`app.intack`), so it starts

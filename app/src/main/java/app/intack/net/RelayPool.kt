@@ -13,7 +13,9 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.longOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
@@ -73,7 +75,10 @@ private class NostrRelay(
         if (sender?.isActive != true) {
             sender = scope.launch {
                 while (outbox.isNotEmpty() && isOpen) {
-                    val text = outbox.removeFirst().toString()
+                    val next = outbox.removeFirst()
+                    // After a "slow down" the queue drains slowly; a live event that waited too long would only be refused.
+                    if (expiredLive(next)) continue
+                    val text = next.toString()
                     Diagnostics.count("Relays: messages out")
                     Diagnostics.count("Relays: out data", text.length.toLong())
                     socket?.send(text)
@@ -136,6 +141,17 @@ private class NostrRelay(
             }
         }
     }
+}
+
+/** A live (ephemeral) event older than this is refused by relays, so it isn't worth sending. */
+private const val LIVE_EVENT_MAX_AGE_S = 30L
+
+private fun expiredLive(message: JsonArray): Boolean {
+    if (message.getOrNull(0)?.jsonPrimitive?.content != "EVENT") return false
+    val event = message.getOrNull(1) as? JsonObject ?: return false
+    if (event["kind"]?.jsonPrimitive?.intOrNull != INTACK_LIVE_KIND) return false
+    val createdAt = event["created_at"]?.jsonPrimitive?.longOrNull ?: return false
+    return System.currentTimeMillis() / 1000 - createdAt > LIVE_EVENT_MAX_AGE_S
 }
 
 private const val BASE_INTERVAL_MS = 200L

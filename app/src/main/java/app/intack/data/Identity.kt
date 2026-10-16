@@ -1,5 +1,6 @@
 package app.intack.data
 
+import app.intack.BuildConfig
 import android.content.Context
 import android.os.Build
 import androidx.core.content.edit
@@ -163,7 +164,8 @@ class Identity(context: Context) {
         set(value) = prefs.edit { putLong("crashesSeenUpTo", value) }
 
     var backgroundSync: Boolean
-        get() = prefs.getBoolean("backgroundSync", true)
+        // Off by default once wake pushes exist: other phones wake this one when something changes.
+        get() = prefs.getBoolean("backgroundSync", BuildConfig.WAKE_URL.isEmpty())
         set(value) = prefs.edit { putBoolean("backgroundSync", value) }
 }
 
