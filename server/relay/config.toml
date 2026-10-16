@@ -1,0 +1,32 @@
+# Intack's own Nostr relay (nostr-rs-relay). It only takes Intack's events, which are encrypted on the
+# phones: it never sees list content. See README.md.
+
+[info]
+relay_url = "wss://relay.intack.app/"
+name = "Intack relay"
+description = "Carries Intack's encrypted sync events only. Other kinds are refused."
+
+[database]
+# SQLite in the container's /usr/src/app/db (a Docker volume).
+engine = "sqlite"
+
+[network]
+address = "0.0.0.0"
+port = 8080
+# Behind Caddy, which adds this header.
+remote_ip_header = "x-forwarded-for"
+
+[options]
+# Phones' clocks drift a little; events from further in the future are refused.
+reject_future_seconds = 1800
+
+[limits]
+# Intack's stored edits (4333) and live hellos and whole-list replies (24333); see Nostr.kt.
+event_kind_allowlist = [4333, 24333]
+# The app keeps events under 45 KB.
+max_event_bytes = 65536
+max_ws_message_bytes = 131072
+max_ws_frame_bytes = 131072
+# Per connection. A phone in many spaces sends a burst on connect (one subscription and a hello each).
+messages_per_sec = 30
+limit_scrapers = false

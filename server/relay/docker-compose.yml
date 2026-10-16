@@ -1,0 +1,26 @@
+# Runs on the relay server (/opt/relay). Caddy terminates TLS for relay.intack.app and passes
+# WebSockets to the relay; only ports 80 and 443 are open.
+services:
+  relay:
+    image: scsibug/nostr-rs-relay:0.10.0
+    restart: unless-stopped
+    volumes:
+      - ./config.toml:/usr/src/app/config.toml:ro
+      - relay-data:/usr/src/app/db
+    mem_limit: 256m
+
+  caddy:
+    image: caddy:2.11.4
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+    depends_on:
+      - relay
+
+volumes:
+  relay-data:
+  caddy-data:

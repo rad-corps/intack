@@ -23,11 +23,14 @@ import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 
 /**
- * Free public Nostr relays used as a fallback when phones can't connect directly, and to hold changes
- * for phones that are offline (events expire after [RELAY_EXPIRY_DAYS] days). Chosen October 2026: each
- * accepted Intack's event kind and 45 KB events, and returned them by author.
+ * Nostr relays used as a fallback when phones can't connect directly, and to hold changes for phones
+ * that are offline (events expire after [RELAY_EXPIRY_DAYS] days). Our own relay (server/relay) comes
+ * first, so it's one of the two kept while the app is in the background; the free public ones
+ * (chosen October 2026: each accepted Intack's event kind and 45 KB events, and returned them by author)
+ * keep everything working if it's down.
  */
 val RELAYS = listOf(
+    "wss://relay.intack.app",
     "wss://relay.damus.io",
     "wss://nos.lol",
     "wss://relay.primal.net",

@@ -1,0 +1,4 @@
+# TLS certificate from Let's Encrypt, renewed automatically; needs relay.intack.app's DNS to point here.
+relay.intack.app {
+	reverse_proxy relay:8080
+}

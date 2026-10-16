@@ -42,7 +42,7 @@
     <li><strong>Directly between phones</strong> where possible. To find each other, the phones briefly
       use free public "meeting point" servers (WebTorrent trackers) and address-lookup (STUN) servers.
       These see your phone's internet address and a random code for the list — never the list itself.</li>
-    <li><strong>Through public relay servers</strong> (the Nostr network) when the phones can't connect
+    <li><strong>Through relay servers</strong> (the Nostr network: our own at relay.intack.app, plus public ones) when the phones can't connect
       directly, or when one of them is switched off. Everything sent this way is <strong>encrypted on
       your phone</strong> with the list's secret key, so the relays only see scrambled data, along with
       your internet address, the time and size of each message, and a random code for the list. Relayed
@@ -57,7 +57,7 @@
       Play services, no pushes are sent or received.</li>
   </ul>
   <p>The people you share with see the list's contents, the name you entered, and who changed what and when.</p>
-  <p>The trackers and relays are run by independent third parties, not by us; we don't control or receive their logs.</p>
+  <p>The trackers and the public relays are run by independent third parties, not by us; we don't control or receive their logs. Our own relay and wake server keep only short-lived technical logs (such as connecting IP addresses) for running them.</p>
 
   <h2>The share link page</h2>
   <p>Share links open a web page hosted on GitHub Pages that hands the link to the app. The list's details
