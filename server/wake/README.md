@@ -30,9 +30,13 @@ phone A ──edit──▶ relays (encrypted, as now)
    `app.intack` and `app.intack.debug` → download `google-services.json` (not secret; it goes in `app/`).
    Then Project settings → Service accounts → Generate new private key: that JSON **is** secret, and
    only goes into the Lambda's environment.
-2. **Lambda**: Node.js 22, handler `index.handler`, 128 MB, 10 s timeout, environment variable
-   `FCM_SERVICE_ACCOUNT` = the service account JSON. Add a Function URL with auth type NONE.
-3. The Function URL goes into the app's build config.
+2. **Lambda**: `bash server/wake/deploy.sh` (AWS profile `intack`, key at `~/secrets/intack-fcm.json`). It creates
+   or updates `intack-wake` (Node.js 22, 128 MB, 10 s, role `intack-wake-role` that can only write
+   its logs) with a public Function URL, and puts the key in the function's environment from a file.
+3. The Function URL goes into the app build as the gradle property `intack.wakeUrl`.
+
+Live since 2026-10-17 in account `intack` (Sydney, ap-southeast-2):
+`https://i2jb2k75z5ypgyn4c55davrzbi0qahvj.lambda-url.ap-southeast-2.on.aws/`
 
 Cost at family scale: within the always-free Lambda tier (1M requests a month); FCM is free.
 

@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "739873028450",
+    "project_id": "intack-ca502",
+    "storage_bucket": "intack-ca502.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:739873028450:android:4aab02f79d62331301143b",
+        "android_client_info": {
+          "package_name": "app.intack"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCoiBGlMNgjG1y8R1xGHVIJ2F7vBfdnM8U"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:739873028450:android:78dc0c9a3c9a368601143b",
+        "android_client_info": {
+          "package_name": "app.intack.debug"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCoiBGlMNgjG1y8R1xGHVIJ2F7vBfdnM8U"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
