@@ -127,4 +127,23 @@ val STARTER_THEMES = listOf(
         background-strength: 40%;
         """,
     ),
+    // Highland cows on a sunny hill: ginger coat on cream, hillside green and heather, soft cards over the photo.
+    StarterTheme(
+        "Highland Cow",
+        """
+        theme: twodo-light;
+        background: #f6eee2;
+        text: #3b2a1f;
+        accent: #b4582a;
+        secondary: #4e6b34;
+        tertiary: #8f6aa3;
+        item-background: #fffaf2;
+        items: cards;
+        corners: 16px;
+        shadow: 2px;
+        font: serif;
+        background-image: highland-cow;
+        background-strength: 60%;
+        """,
+    ),
 )

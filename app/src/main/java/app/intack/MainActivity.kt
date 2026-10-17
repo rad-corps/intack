@@ -18,8 +18,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.Density
+import app.intack.ui.LocalTextScale
+import app.intack.ui.ScaledText
 import androidx.core.content.IntentCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -56,9 +56,8 @@ class MainActivity : ComponentActivity() {
                 enableEdgeToEdge(bars, bars)
             }
             val textScale by app.textScale.collectAsStateWithLifecycle()
-            val density = LocalDensity.current
-            // Larger text everywhere, on top of the phone's own font size setting.
-            CompositionLocalProvider(LocalDensity provides Density(density.density, density.fontScale * textScale)) {
+            // Larger text everywhere, on top of the phone's own font size setting (dialogs apply it again: Dialogs.kt).
+            CompositionLocalProvider(LocalTextScale provides textScale) { ScaledText {
                 IntackTheme(themeById(themeId)) {
                     IntackRoot(
                         app,
@@ -69,7 +68,7 @@ class MainActivity : ComponentActivity() {
                         onScreenDark = { screenDark = it },
                     )
                 }
-            }
+            } }
             val diagnostics by Diagnostics.enabled.collectAsStateWithLifecycle()
             if (diagnostics) DiagnosticsOverlay()
         }

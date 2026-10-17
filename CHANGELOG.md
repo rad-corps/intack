@@ -5,6 +5,13 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+**Highland cows.** A new background, Highland cows (under Nature), and a Highland Cow starter theme to go
+with it: ginger, heather and hillside green on cream. Pick them in Settings › Look, or in a group's look.
+
+**Text size shows straight away.** Changing Settings › Text size now resizes the Settings window itself
+as you tap, and menus, pop-ups and sheets everywhere follow the chosen size too (before, they kept the
+phone's normal size).
+
 ## v0.8.0 — 2026-10-17
 
 **A new look.** Intack has its own icon (a pin on pine green), a wordmark, and warmer default colours:

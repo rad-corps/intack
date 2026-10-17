@@ -17,3 +17,4 @@ Photos are CC0 (public domain dedication) or marked public domain (PDM); no perm
 | winter.webp | Bonnie Moreland | PDM | https://www.flickr.com/photos/66741228@N05/39587628365 |
 | spring.webp | Bonnie Moreland | CC0 | https://www.flickr.com/photos/66741228@N05/33619146295 |
 | summer.webp | Bernard Spragg | PDM | https://www.flickr.com/photos/88123769@N02/52378857037 |
+| highland-cow.webp | AngusMurray1989 | CC0 | https://commons.wikimedia.org/wiki/File:Pennywell_Farm_is_home_to_some_beautiful_Highland_Cows.jpg |
