@@ -5,6 +5,8 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+## v0.8.1 — 2026-10-18
+
 **Highland cows.** A new background, Highland cows (under Nature), and a Highland Cow starter theme to go
 with it: ginger, heather and hillside green on cream. Pick them in Settings › Look, or in a group's look.
 
