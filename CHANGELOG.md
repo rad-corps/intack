@@ -5,6 +5,8 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+## v0.8.2 — 2026-10-18
+
 **Which list is the current one.** A group's lists are now in order of their latest change, so the one in
 use is at the top. Lists someone else has changed since you last looked are in bold with a dot, and the
 Lists tab gets a dot too. Starting a list with the same name as one already in use (say a second
