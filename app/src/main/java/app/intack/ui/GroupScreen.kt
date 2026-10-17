@@ -72,6 +72,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -81,10 +83,16 @@ import app.intack.data.ALL_CALENDARS
 import app.intack.model.BLANK_LIST
 import app.intack.model.SpaceKind
 import app.intack.model.TodoList
+import app.intack.model.Item
 import app.intack.model.calendarRef
 import app.intack.model.isJoining
 import app.intack.model.listRefs
 import app.intack.model.timesLine
+import app.intack.model.createdTime
+import app.intack.model.freeListName
+import app.intack.model.hasUnseenChanges
+import app.intack.model.lastEdited
+import app.intack.model.sameListName
 import app.intack.model.unreadMessages
 import app.intack.sync.SyncStatus
 import kotlinx.coroutines.launch
@@ -153,6 +161,7 @@ internal fun GroupScreen(
         bottomBar = {
             NavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.94f)) {
                 val unread = group.unreadMessages(lists, app.identity.deviceId)
+                val listsChanged = group.listRefs.any { ref -> ref.spaceId?.let { lists[it] }?.hasUnseenChanges(app.identity.deviceId) == true }
                 GroupTab.entries.forEach { option ->
                     NavigationBarItem(
                         selected = tab == option,
@@ -160,6 +169,8 @@ internal fun GroupScreen(
                         icon = {
                             if (option == GroupTab.MESSAGES && unread > 0 && tab != GroupTab.MESSAGES) {
                                 BadgedBox(badge = { Badge { Text(if (unread > 99) "99+" else "$unread") } }) { Icon(option.icon, null) }
+                            } else if (option == GroupTab.LISTS && listsChanged && tab != GroupTab.LISTS) {
+                                BadgedBox(badge = { Badge() }) { Icon(option.icon, null) }
                             } else {
                                 Icon(option.icon, null)
                             }
@@ -270,9 +281,21 @@ private fun ListsTab(app: IntackApp, group: TodoList, lists: Map<String, TodoLis
     val scope = rememberCoroutineScope()
     var creating by remember { mutableStateOf(false) }
     var showArchived by rememberSaveable { mutableStateOf(false) }
+    val me = app.identity.deviceId
+    // Most recently changed first, so the list in use is at the top.
+    val changed = { ref: Item -> ref.spaceId?.let { lists[it] }?.let { it.lastEdited ?: it.createdTime(ref) } ?: ref.createdAt }
+    val (archived, active) = group.listRefs.sortedByDescending(changed).partition { ref -> ref.spaceId?.let { lists[it] }?.archived == true }
+    // Set when the new list's name is already taken by one in use: the one in use.
+    var sameName by remember { mutableStateOf<TodoList?>(null) }
+    var name by remember { mutableStateOf("") }
+    var template by remember { mutableStateOf(BLANK_LIST) }
+    fun create(listName: String) {
+        creating = false
+        sameName = null
+        scope.launch { app.repo.addToGroup(group.id, listName, template = template)?.let { onOpenSpace(it.id) } }
+    }
     Column(Modifier.fillMaxSize()) {
         LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(vertical = 8.dp)) {
-            val (archived, active) = group.listRefs.partition { ref -> ref.spaceId?.let { lists[it] }?.archived == true }
             items(active + if (showArchived) archived else emptyList(), key = { it.id }) { ref ->
                 if (ref === archived.firstOrNull()) ArchivedHeader(archived.size, expanded = true) { showArchived = false }
                 val list = ref.spaceId?.let { lists[it] }
@@ -282,8 +305,9 @@ private fun ListsTab(app: IntackApp, group: TodoList, lists: Map<String, TodoLis
                         contentAlignment = Alignment.Center,
                     ) { Icon(Icons.Outlined.Checklist, null, tint = MaterialTheme.colorScheme.primary) }
                     Spacer(Modifier.width(14.dp))
+                    val unseen = list?.hasUnseenChanges(me) == true
                     Column(Modifier.weight(1f)) {
-                        Text(ref.text, style = MaterialTheme.typography.titleMedium)
+                        Text(ref.text, style = MaterialTheme.typography.titleMedium, fontWeight = if (unseen) FontWeight.Bold else null)
                         Text(
                             list?.let { toDoSummary(it) } ?: "Getting it…",
                             style = MaterialTheme.typography.bodyMedium,
@@ -292,6 +316,10 @@ private fun ListsTab(app: IntackApp, group: TodoList, lists: Map<String, TodoLis
                         // Tells apart lists with the same name (this week's Groceries from last week's).
                         list?.timesLine(ref)?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                     }
+                    if (unseen) {
+                        Box(Modifier.size(10.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary).semantics { contentDescription = "New changes" })
+                        Spacer(Modifier.width(8.dp))
+                    }
                     Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.outline)
                 }
             }
@@ -299,16 +327,14 @@ private fun ListsTab(app: IntackApp, group: TodoList, lists: Map<String, TodoLis
         }
         // At the bottom, within thumb reach, like the add bars in lists and the calendar.
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Button(onClick = { creating = true }, modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(vertical = 14.dp)) {
+            Button(onClick = { name = ""; template = BLANK_LIST; creating = true }, modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(vertical = 14.dp)) {
                 Icon(Icons.Default.Add, null)
                 Spacer(Modifier.width(8.dp))
                 Text("New list")
             }
         }
     }
-    if (creating) {
-        var name by remember { mutableStateOf("") }
-        var template by remember { mutableStateOf(BLANK_LIST) }
+    if (creating && sameName == null) {
         AlertDialog(
             onDismissRequest = { creating = false },
             title = { Text("New list") },
@@ -326,11 +352,42 @@ private fun ListsTab(app: IntackApp, group: TodoList, lists: Map<String, TodoLis
             },
             confirmButton = {
                 TextButton(onClick = {
-                    creating = false
-                    scope.launch { app.repo.addToGroup(group.id, name, template = template)?.let { onOpenSpace(it.id) } }
+                    // Two lists called Groceries make it hard to tell which is the one in use, so ask first.
+                    sameName = active.firstOrNull { sameListName(it.text, name) }?.spaceId?.let { lists[it] }
+                    if (sameName == null) create(name.trim())
                 }, enabled = name.isNotBlank()) { Text("Create") }
             },
             dismissButton = { TextButton(onClick = { creating = false }) { Text("Cancel") } },
+        )
+    }
+    sameName?.let { current ->
+        val ref = group.listRefs.firstOrNull { it.spaceId == current.id }
+        val title = ref?.text ?: current.name
+        val other = freeListName(title, group.listRefs.map { it.text })
+        AlertDialog(
+            onDismissRequest = { sameName = null },
+            title = { Text("There's already a list called “$title”") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        listOfNotNull(toDoSummary(current), current.timesLine(ref)).joinToString(" · "),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    BrandButton("Open it") { creating = false; sameName = null; onOpenSpace(current.id) }
+                    BrandButton("Archive it, start fresh", outlined = true) {
+                        creating = false
+                        sameName = null
+                        scope.launch {
+                            app.repo.archive(current.id)
+                            app.repo.addToGroup(group.id, name.trim(), template = template)?.let { onOpenSpace(it.id) }
+                        }
+                    }
+                    BrandTextButton("Call the new one “$other”") { create(other) }
+                }
+            },
+            confirmButton = {},
+            dismissButton = { TextButton(onClick = { sameName = null }) { Text("Back") } },
         )
     }
 }

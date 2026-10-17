@@ -134,7 +134,10 @@ data class TodoList(
     val hideHeadings: Boolean = false,
     /** Local only: items record their section; false for lists saved before they did (see [sectionsFromPositions]). */
     val sectioned: Boolean = false,
-    /** Local only, for messages: the newest message this phone has shown (its createdAt), for the unread count. */
+    /**
+     * Local only. For messages: the newest message this phone has shown (its createdAt), for the unread count.
+     * For lists: the newest change shown (its version time), so lists with changes not yet seen stand out.
+     */
     val readUpTo: Long = 0,
 ) {
     /** Items in the order they're shown: unsorted ones, then each heading with its items. */

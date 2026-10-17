@@ -69,6 +69,11 @@ class Identity(context: Context) {
         get() = runCatching { Json.decodeFromString<Look>(prefs.getString("appLook", null)!!) }.getOrDefault(Look())
         set(value) = prefs.edit { putString("appLook", Json.encodeToString(value)) }
 
+    /** Lists saved before changes were marked seen have been marked seen once (see ListRepository.load). */
+    var listsSeenBaseline: Boolean
+        get() = prefs.getBoolean("listsSeenBaseline", false)
+        set(value) = prefs.edit { putBoolean("listsSeenBaseline", value) }
+
     /** Settings › Diagnostics: an overlay showing where the app spends battery. */
     var diagnostics: Boolean
         get() = prefs.getBoolean("diagnostics", false)

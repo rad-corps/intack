@@ -139,6 +139,7 @@ import app.intack.model.STATUS_DELETED
 import app.intack.model.ShareLink
 import app.intack.model.SpaceKind
 import app.intack.model.TodoList
+import app.intack.model.lastEdited
 import app.intack.model.headings
 import app.intack.model.isJoining
 import app.intack.model.sectionItems
@@ -594,6 +595,8 @@ internal fun ListBody(app: IntackApp, list: TodoList, status: SyncStatus, onBack
     var newText by rememberSaveable(list.id) { mutableStateOf("") }
     val names by app.sync.names.collectAsStateWithLifecycle()
     val highlighted = rememberRemoteHighlights(app, list.id)
+    // On screen, so its changes aren't new any more (bold in the group's lists until then).
+    LaunchedEffect(list.id, list.lastEdited) { app.repo.markSeen(list.id) }
 
     // Set when this phone adds an item, so the list scrolls to it once it appears.
     var scrollToNew by remember { mutableStateOf(false) }

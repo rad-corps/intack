@@ -18,6 +18,20 @@ fun TodoList.createdTime(entry: Item? = null): Long? =
 val TodoList.lastEdited: Long?
     get() = items.values.filter { !it.isPhotoPart }.map { it.version.ts }.filter { it > 0 }.maxOrNull()
 
+/** Someone else changed the list since this phone last showed it ([TodoList.readUpTo] is the newest change shown). */
+fun TodoList.hasUnseenChanges(me: String): Boolean =
+    kind == SpaceKind.LIST && !archived && items.values.any { !it.isPhotoPart && it.version.by != me && it.version.ts > readUpTo }
+
+/** Names that count as the same list: "Groceries" and " groceries". */
+fun sameListName(a: String, b: String): Boolean = a.trim().equals(b.trim(), ignoreCase = true)
+
+/** [name], or "[name] 2", "[name] 3"… whichever isn't in [taken]. */
+fun freeListName(name: String, taken: Collection<String>): String {
+    val base = name.trim()
+    if (taken.none { sameListName(it, base) }) return base
+    return generateSequence(2) { it + 1 }.map { "$base $it" }.first { n -> taken.none { sameListName(it, n) } }
+}
+
 private val clock = DateTimeFormatter.ofPattern("HH:mm")
 
 /** e.g. "just now", "5 min ago", "today at 14:05", "yesterday", "Fri 9 Oct". */

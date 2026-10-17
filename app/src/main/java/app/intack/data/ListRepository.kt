@@ -15,6 +15,7 @@ import app.intack.model.LIST_STATUS_ITEM
 import app.intack.model.Look
 import app.intack.model.PhotoChoice
 import app.intack.model.isPhotoPart
+import app.intack.model.lastEdited
 import app.intack.model.photoBase64
 import app.intack.model.photoPartId
 import app.intack.model.sharedLook
@@ -362,6 +363,13 @@ class ListRepository(private val dir: File, private val identity: Identity) {
         if (newest > chat.readUpTo) save(chat.copy(readUpTo = newest))
     }
 
+    /** This phone has shown list [listId] as it is now: its changes aren't new any more. */
+    suspend fun markSeen(listId: String): Unit = mutex.withLock {
+        val list = _lists.value[listId] ?: return
+        val newest = list.lastEdited ?: return
+        if (newest > list.readUpTo) save(list.copy(readUpTo = newest))
+    }
+
     /** Saves a group item made here and sends it to the group (caller holds [mutex]). */
     private suspend fun putGroupItem(groupId: String, item: Item) {
         val group = _lists.value[groupId] ?: return
@@ -677,12 +685,21 @@ class ListRepository(private val dir: File, private val identity: Identity) {
 
     private fun load(): Map<String, TodoList> {
         dir.mkdirs()
+        // Lists from before "seen" was recorded start with everything seen, rather than all highlighted.
+        val seenBaseline = identity.listsSeenBaseline
         return dir.listFiles { f -> f.name.endsWith(".json") }.orEmpty().mapNotNull { f ->
             runCatching { json.decodeFromString<TodoList>(f.readText()) }
                 .onFailure { Log.w("Intack", "Skipping unreadable list ${f.name}", it) }
                 .getOrNull()
                 ?.let { list -> if (list.sectioned) list else recordSections(list, f) }
-        }.associateBy { it.id }
+                ?.let { list -> if (seenBaseline || list.kind != SpaceKind.LIST) list else markAllSeen(list, f) }
+        }.associateBy { it.id }.also { identity.listsSeenBaseline = true }
+    }
+
+    private fun markAllSeen(list: TodoList, file: File): TodoList {
+        val updated = list.copy(readUpTo = maxOf(list.readUpTo, list.lastEdited ?: 0))
+        runCatching { file.writeText(json.encodeToString(updated)) }
+        return updated
     }
 
     /** Once, for a list saved before items recorded their section: works them out, and saves. */
