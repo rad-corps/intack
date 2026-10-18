@@ -55,7 +55,8 @@ import kotlinx.coroutines.launch
 
 /**
  * Change a list item: its words, its note, its photo, which section it's in, or delete it. For a heading: rename or delete
- * (deleting a heading leaves its items where they are).
+ * (deleting a heading leaves its items where they are). With [adding], it fills in a new item before it's added
+ * (so it can have a note, photo and section from the start), and [item] is just its words so far.
  */
 @Composable
 internal fun ListItemSheet(
@@ -66,11 +67,12 @@ internal fun ListItemSheet(
     section: Item?,
     onDismiss: () -> Unit,
     onSave: (text: String, headingId: String?, note: String, photo: PhotoChoice) -> Unit,
-    onDelete: () -> Unit,
+    onDelete: () -> Unit = {},
     history: List<AuditEntry> = emptyList(),
     historyRow: @Composable (AuditEntry) -> Unit = {},
     /** The item's photo, if it has one and it has arrived. */
     image: ImageBitmap? = null,
+    adding: Boolean = false,
 ) {
     val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var text by remember { mutableStateOf(item.text) }
@@ -103,7 +105,7 @@ internal fun ListItemSheet(
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheet) {
         Column(Modifier.fillMaxWidth().imePadding().verticalScroll(rememberScrollState()).padding(start = 20.dp, end = 20.dp, bottom = 24.dp)) {
-            Text(if (item.heading) "Edit heading" else "Edit item", style = MaterialTheme.typography.titleLarge)
+            Text(if (adding) "New item" else if (item.heading) "Edit heading" else "Edit item", style = MaterialTheme.typography.titleLarge)
             Spacer(Modifier.height(16.dp))
             OutlinedTextField(
                 value = text,
@@ -167,8 +169,8 @@ internal fun ListItemSheet(
                 onClick = { if (text.isNotBlank()) onSave(text, headingId, note, photo) },
                 enabled = text.isNotBlank(),
                 modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
-            ) { Text("Save", style = MaterialTheme.typography.titleMedium) }
-            TextButton(onClick = onDelete, modifier = Modifier.fillMaxWidth()) {
+            ) { Text(if (adding) "Add" else "Save", style = MaterialTheme.typography.titleMedium) }
+            if (!adding) TextButton(onClick = onDelete, modifier = Modifier.fillMaxWidth()) {
                 Text(if (item.heading) "Delete heading (keeps its items)" else "Delete", color = MaterialTheme.colorScheme.error)
             }
             if (history.isNotEmpty()) {

@@ -481,13 +481,17 @@ class ListRepository(private val dir: File, private val identity: Identity) {
         }
     }
 
-    /** Adds an item (or, with [heading], a section heading) at the bottom of the list. */
-    suspend fun addItem(listId: String, text: String, heading: Boolean = false) {
-        val trimmed = text.trim().ifEmpty { return }
+    /**
+     * Adds an item (or, with [heading], a section heading) at the bottom of the list, with its [note] if
+     * it has one. Returns its id.
+     */
+    suspend fun addItem(listId: String, text: String, heading: Boolean = false, note: String = ""): String? {
+        val trimmed = text.trim().ifEmpty { return null }
+        val id = UUID.randomUUID().toString()
         putLocal(listId) { list ->
             val now = System.currentTimeMillis()
             Item(
-                id = UUID.randomUUID().toString(),
+                id = id,
                 text = trimmed,
                 createdAt = now,
                 version = Version(now, identity.deviceId),
@@ -495,8 +499,9 @@ class ListRepository(private val dir: File, private val identity: Identity) {
                 pos = if (heading) newHeadingPosition(list.visibleItems) else newItemPosition(list.visibleItems),
                 posVersion = Version(now, identity.deviceId),
                 heading = heading,
-            )
+            ).let { if (note.isBlank()) it else it.withNote(note, identity.deviceId, now) }
         }
+        return id
     }
 
     /** Changes an item's (or heading's) text. Does nothing if it's the same. */

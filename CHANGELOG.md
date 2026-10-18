@@ -5,6 +5,9 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+**A note before you add.** The new button at the end of the "Add an item" box opens the full item before
+it goes on the list, so you can give it a note (or a photo, or a section) straight away, then tap **Add**.
+
 ## v0.9.1 — 2026-10-18
 
 **Tick while locked.** A locked list still lets you tick and untick items; it just stops changes to the

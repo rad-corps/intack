@@ -61,6 +61,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MoreVert
@@ -146,6 +147,7 @@ import app.intack.model.ShareLink
 import app.intack.model.SpaceKind
 import app.intack.model.PhotoChoice
 import app.intack.model.TodoList
+import app.intack.model.Version
 import app.intack.model.lastEdited
 import app.intack.model.headings
 import app.intack.model.isJoining
@@ -646,6 +648,8 @@ internal fun ListBody(
     var scrollToNew by remember { mutableStateOf(false) }
     // The item (or heading) open for changing.
     var editing by remember { mutableStateOf<Item?>(null) }
+    // Open while filling in a new item (its note, photo or section) before adding it.
+    var drafting by remember { mutableStateOf(false) }
 
     fun add() {
         val text = newText
@@ -823,6 +827,7 @@ internal fun ListBody(
                 value = newText,
                 onValueChange = { newText = it },
                 placeholder = { Text("Add an item") },
+                trailingIcon = { IconButton(onClick = { drafting = true }) { Icon(Icons.Default.EditNote, "Add with a note or photo") } },
                 singleLine = true,
                 shape = RoundedCornerShape(12.dp),
                 colors = OutlinedTextFieldDefaults.colors(
@@ -865,6 +870,26 @@ internal fun ListBody(
             history = history,
             historyRow = { AuditRow(it, app.identity.deviceId, names, showDate = true, compact = true) },
             image = image,
+        )
+    }
+
+    if (drafting) {
+        ListItemSheet(
+            item = Item(id = "", text = newText, createdAt = 0, version = Version(0, ""), editor = ""),
+            headings = list.headings,
+            section = null,
+            onDismiss = { drafting = false },
+            onSave = { text, headingId, note, photo ->
+                drafting = false
+                newText = ""
+                scrollToNew = true
+                app.save {
+                    val id = app.repo.addItem(list.id, text, note = note) ?: return@save
+                    if (photo is PhotoChoice.Own) app.repo.setImage(list.id, id, photo.jpeg)
+                    if (headingId != null) app.repo.moveToSection(list.id, id, headingId)
+                }
+            },
+            adding = true,
         )
     }
 
