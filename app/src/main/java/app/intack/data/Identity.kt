@@ -84,6 +84,16 @@ class Identity(context: Context) {
         get() = prefs.getFloat("textScale", 1f)
         set(value) = prefs.edit { putFloat("textScale", value) }
 
+    /** Settings › Tick boxes: on the left (for left hands) instead of the right. */
+    var tickOnLeft: Boolean
+        get() = prefs.getBoolean("tickOnLeft", false)
+        set(value) = prefs.edit { putBoolean("tickOnLeft", value) }
+
+    /** Lists that keep the screen on while open (say, for shopping). */
+    var awakeLists: Set<String>
+        get() = prefs.getStringSet("awakeLists", null).orEmpty().toSet()
+        set(value) = prefs.edit { putStringSet("awakeLists", value) }
+
     /** The group (or [OTHER_LISTS]) shown last, to open on it next time. */
     var lastView: String?
         get() = prefs.getString("lastView", null)

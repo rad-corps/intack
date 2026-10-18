@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -64,7 +65,11 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.outlined.LightMode
+import androidx.compose.material.icons.outlined.LockOpen
 import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -111,6 +116,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
@@ -580,18 +586,55 @@ internal fun ListScreen(app: IntackApp, list: TodoList, status: SyncStatus, snac
     var showHistory by rememberSaveable(list.id) { mutableStateOf(false) }
     val names by app.sync.names.collectAsStateWithLifecycle()
     if (showHistory) return HistoryScreen(list, app.identity.deviceId, names, onBack = { showHistory = false })
+    val context = LocalContext.current
+    // For shopping: the screen stays on (remembered per list), and a lock stops bumps ticking things.
+    var awake by remember(list.id) { mutableStateOf(list.id in app.identity.awakeLists) }
+    var locked by rememberSaveable(list.id) { mutableStateOf(false) }
+    val view = LocalView.current
+    DisposableEffect(view, awake) {
+        view.keepScreenOn = awake
+        onDispose { view.keepScreenOn = false }
+    }
     Scaffold(
-        topBar = { SpaceTopBar(app, list, status, onBack, onHistory = { showHistory = true }) },
+        topBar = {
+            SpaceTopBar(app, list, status, onBack, onHistory = { showHistory = true }) {
+                IconButton(onClick = {
+                    awake = !awake
+                    app.setKeepAwake(list.id, awake)
+                    Toast.makeText(context, if (awake) "The screen stays on while this list is open" else "The screen can sleep again", Toast.LENGTH_SHORT).show()
+                }) {
+                    if (awake) Icon(Icons.Filled.LightMode, "Keep the screen on: on", tint = MaterialTheme.colorScheme.primary)
+                    else Icon(Icons.Outlined.LightMode, "Keep the screen on: off")
+                }
+                IconButton(onClick = {
+                    // Unlocking takes a hold on the bar at the bottom, so a bump can't undo the lock either.
+                    if (!locked) locked = true
+                    Toast.makeText(context, "Locked: hold the bar at the bottom to unlock", Toast.LENGTH_SHORT).show()
+                }) {
+                    if (locked) Icon(Icons.Filled.Lock, "Locked", tint = MaterialTheme.colorScheme.primary)
+                    else Icon(Icons.Outlined.LockOpen, "Lock the list")
+                }
+            }
+        },
         snackbarHost = { SnackbarHost(snackbar) },
     ) { padding ->
-        ListBody(app, list, status, onBack, Modifier.padding(padding).consumeWindowInsets(padding))
+        ListBody(app, list, status, onBack, Modifier.padding(padding).consumeWindowInsets(padding), locked = locked, onUnlock = { locked = false })
     }
 }
 
 /** The list itself: add bar and tickable, draggable items. */
 @Composable
-internal fun ListBody(app: IntackApp, list: TodoList, status: SyncStatus, onBack: () -> Unit, modifier: Modifier = Modifier) {
+internal fun ListBody(
+    app: IntackApp,
+    list: TodoList,
+    status: SyncStatus,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+    locked: Boolean = false,
+    onUnlock: () -> Unit = {},
+) {
     val scope = rememberCoroutineScope()
+    val tickOnLeft by app.tickOnLeft.collectAsStateWithLifecycle()
     var newText by rememberSaveable(list.id) { mutableStateOf("") }
     val names by app.sync.names.collectAsStateWithLifecycle()
     val highlighted = rememberRemoteHighlights(app, list.id)
@@ -612,7 +655,7 @@ internal fun ListBody(app: IntackApp, list: TodoList, status: SyncStatus, onBack
 
     Column(modifier.fillMaxSize()) {
         JoiningBanner(list, status)
-        ArchiveBanner(app, list, onBack)
+        if (!locked) ArchiveBanner(app, list, onBack)
         // Local copy so dragging is smooth; committed to the repository when the drag ends.
         val shown = if (list.hideHeadings) list.visibleItems.filter { !it.heading } else list.visibleItems
         // The drag handles keep the callbacks they're first given, so everything those read must be
@@ -652,6 +695,7 @@ internal fun ListBody(app: IntackApp, list: TodoList, status: SyncStatus, onBack
                     val dragHandle = if (item.heading) {
                         // A heading takes its items with it: they come out of the list and ride along under it.
                         Modifier.draggableHandle(
+                            enabled = !locked,
                             onDragStarted = {
                                 val items = sectionItems(ordered, item.id).drop(1)
                                 carried = item.id to items
@@ -668,6 +712,7 @@ internal fun ListBody(app: IntackApp, list: TodoList, status: SyncStatus, onBack
                         )
                     } else {
                         Modifier.draggableHandle(
+                            enabled = !locked,
                             onDragStarted = { dragging = item.id },
                             onDragStopped = {
                                 dragging = null
@@ -684,12 +729,16 @@ internal fun ListBody(app: IntackApp, list: TodoList, status: SyncStatus, onBack
                             else Modifier.shadow(6.dp, RoundedCornerShape(12.dp)).clip(RoundedCornerShape(12.dp))
                                 .background(MaterialTheme.colorScheme.surfaceContainerHigh),
                         ) {
-                            // A section heading: bold, no checkbox; tap to rename or delete.
+                            // A section heading: bold, no checkbox; tap to rename or delete. Its handle lines up with the items'.
                             Row(
-                                Modifier.fillMaxWidth().background(if (riding == null) background else Color.Transparent).clickable { editing = item }
-                                    .padding(start = 20.dp, end = 4.dp, top = 12.dp),
+                                Modifier.fillMaxWidth().background(if (riding == null) background else Color.Transparent).clickable(enabled = !locked) { editing = item }
+                                    .padding(start = if (tickOnLeft) 20.dp else 4.dp, end = if (tickOnLeft) 4.dp else 20.dp, top = 12.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
+                                val handle = @Composable {
+                                    Icon(painterResource(R.drawable.ic_drag_handle), "Move heading", tint = MaterialTheme.colorScheme.outline, modifier = dragHandle.padding(12.dp))
+                                }
+                                if (!tickOnLeft) handle()
                                 Text(
                                     item.text,
                                     Modifier.weight(1f).padding(vertical = 8.dp),
@@ -697,24 +746,32 @@ internal fun ListBody(app: IntackApp, list: TodoList, status: SyncStatus, onBack
                                     fontWeight = FontWeight.SemiBold,
                                     color = MaterialTheme.colorScheme.secondary,
                                 )
-                                Icon(painterResource(R.drawable.ic_drag_handle), "Move heading", tint = MaterialTheme.colorScheme.outline, modifier = dragHandle.padding(12.dp))
+                                if (tickOnLeft) handle()
                             }
-                            riding?.forEach { CarriedItem(it) }
+                            riding?.forEach { CarriedItem(it, tickOnLeft) }
                         }
                         return@ReorderableItem
                     }
-                    StyledRow(fill = background, contentPadding = PaddingValues(start = 8.dp, end = 4.dp)) {
-                        // The checkbox ticks; the words open the item to change or delete it.
-                        Checkbox(
-                            checked = item.checked,
-                            onCheckedChange = { scope.launch { app.repo.setChecked(list.id, item.id, it) } },
-                            colors = CheckboxDefaults.colors(
-                                // Ticked in the colour of whoever ticked it.
-                                checkedColor = personColor(item.version.by),
-                                uncheckedColor = MaterialTheme.colorScheme.outline,
-                            ),
-                        )
-                        Column(Modifier.weight(1f).clip(RoundedCornerShape(8.dp)).clickable { editing = item }.padding(vertical = rowStyle.spacing, horizontal = 4.dp)) {
+                    StyledRow(fill = background, contentPadding = if (tickOnLeft) PaddingValues(start = 8.dp, end = 4.dp) else PaddingValues(start = 4.dp, end = 8.dp)) {
+                        // The checkbox ticks (on the thumb's side); the words open the item to change or delete it.
+                        val checkbox = @Composable {
+                            Checkbox(
+                                checked = item.checked,
+                                onCheckedChange = if (locked) null else ({ scope.launch { app.repo.setChecked(list.id, item.id, it) } }),
+                                // Without a click handler it would shrink; keep its touch size so nothing shifts.
+                                modifier = if (locked) Modifier.padding(12.dp) else Modifier,
+                                colors = CheckboxDefaults.colors(
+                                    // Ticked in the colour of whoever ticked it.
+                                    checkedColor = personColor(item.version.by),
+                                    uncheckedColor = MaterialTheme.colorScheme.outline,
+                                ),
+                            )
+                        }
+                        val handle = @Composable {
+                            Icon(painterResource(R.drawable.ic_drag_handle), "Reorder", tint = MaterialTheme.colorScheme.outline, modifier = dragHandle.padding(12.dp))
+                        }
+                        if (tickOnLeft) checkbox() else handle()
+                        Column(Modifier.weight(1f).clip(RoundedCornerShape(8.dp)).clickable(enabled = !locked) { editing = item }.padding(vertical = rowStyle.spacing, horizontal = 4.dp)) {
                             Text(
                                 item.text,
                                 style = MaterialTheme.typography.bodyLarge,
@@ -739,10 +796,25 @@ internal fun ListBody(app: IntackApp, list: TodoList, status: SyncStatus, onBack
                                 )
                             }
                         }
-                        Icon(painterResource(R.drawable.ic_drag_handle), "Reorder", tint = MaterialTheme.colorScheme.outline, modifier = dragHandle.padding(12.dp))
+                        if (tickOnLeft) handle() else checkbox()
                     }
                 }
             }
+        }
+        // Locked: hold (not tap, which a bump could do) to unlock.
+        if (locked) {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp).clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .combinedClickable(onClickLabel = null, onLongClickLabel = "Unlock", onClick = {}, onLongClick = onUnlock)
+                    .padding(horizontal = 16.dp, vertical = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Filled.Lock, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(12.dp))
+                Text("Locked · hold here to unlock", style = MaterialTheme.typography.bodyMedium)
+            }
+            return@Column
         }
         // At the bottom, within thumb reach, and lifted above the keyboard while typing.
         Row(Modifier.fillMaxWidth().imePadding().padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -796,7 +868,15 @@ internal fun ListBody(app: IntackApp, list: TodoList, status: SyncStatus, onBack
 
 /** Title with sync status, Share, and a menu with History and Remove — shared by lists and diaries. */
 @Composable
-internal fun SpaceTopBar(app: IntackApp, list: TodoList, status: SyncStatus, onBack: () -> Unit, onHistory: () -> Unit) {
+internal fun SpaceTopBar(
+    app: IntackApp,
+    list: TodoList,
+    status: SyncStatus,
+    onBack: () -> Unit,
+    onHistory: () -> Unit,
+    /** Buttons before the menu, e.g. a list's keep-awake and lock. */
+    extraActions: @Composable () -> Unit = {},
+) {
     var sharing by remember { mutableStateOf(false) }
     var menu by remember { mutableStateOf(false) }
     var confirmRemove by remember { mutableStateOf(false) }
@@ -833,6 +913,7 @@ internal fun SpaceTopBar(app: IntackApp, list: TodoList, status: SyncStatus, onB
         actions = {
             // In a group, people are invited to the whole group and the look is the group's.
             if (!inGroup) IconButton(onClick = { sharing = true }) { Icon(Icons.Default.Share, "Share") }
+            extraActions()
             IconButton(onClick = { menu = true }) { Icon(Icons.Default.MoreVert, "More") }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                 if (list.kind == SpaceKind.LIST) {
@@ -1169,6 +1250,19 @@ private fun SettingsDialog(app: IntackApp, onDismiss: () -> Unit, onNotification
                             selected = textScale == scale,
                             onClick = { textScale = scale; app.setTextScale(scale) },
                             shape = SegmentedButtonDefaults.itemShape(index, TEXT_SIZES.size),
+                        ) { Text(label) }
+                    }
+                }
+                Spacer(Modifier.height(16.dp))
+                Text("Tick boxes")
+                Spacer(Modifier.height(6.dp))
+                val tickOnLeft by app.tickOnLeft.collectAsStateWithLifecycle()
+                SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                    listOf("On the left" to true, "On the right" to false).forEachIndexed { index, (label, left) ->
+                        SegmentedButton(
+                            selected = tickOnLeft == left,
+                            onClick = { app.setTickOnLeft(left) },
+                            shape = SegmentedButtonDefaults.itemShape(index, 2),
                         ) { Text(label) }
                     }
                 }
@@ -1579,9 +1673,9 @@ internal fun TemplateChoice(selected: ListTemplate, onSelect: (ListTemplate) -> 
 
 /** An item travelling under its heading while the heading is dragged: how it looks in the list, but still. */
 @Composable
-private fun CarriedItem(item: Item) {
-    Row(Modifier.fillMaxWidth().padding(start = 8.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        Checkbox(checked = item.checked, onCheckedChange = null, modifier = Modifier.padding(12.dp))
+private fun CarriedItem(item: Item, tickOnLeft: Boolean) {
+    Row(Modifier.fillMaxWidth().padding(start = if (tickOnLeft) 8.dp else 52.dp, end = if (tickOnLeft) 4.dp else 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        if (tickOnLeft) Checkbox(checked = item.checked, onCheckedChange = null, modifier = Modifier.padding(12.dp))
         Text(
             item.text,
             Modifier.weight(1f).padding(vertical = 12.dp, horizontal = 4.dp),
@@ -1589,5 +1683,6 @@ private fun CarriedItem(item: Item) {
             textDecoration = if (item.checked) TextDecoration.LineThrough else null,
             color = if (item.checked) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.onSurface,
         )
+        if (!tickOnLeft) Checkbox(checked = item.checked, onCheckedChange = null, modifier = Modifier.padding(12.dp))
     }
 }

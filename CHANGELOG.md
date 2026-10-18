@@ -5,6 +5,11 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+**For the shop.** Two new buttons at the top of a list. The sun keeps the screen on while the list is open
+(remembered for that list), so it doesn't sleep while you shop. The padlock locks the list so a bump can't
+tick or change anything; hold the bar at the bottom to unlock. And tick boxes are now on the right, under
+your thumb; left-handers can move them back in Settings › Tick boxes.
+
 ## v0.8.3 — 2026-10-18
 
 **No more endless "Getting the list…".** Opening a list you already have, while the person who made it

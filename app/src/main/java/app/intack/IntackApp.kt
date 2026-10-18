@@ -39,6 +39,10 @@ class IntackApp : Application() {
     lateinit var textScale: MutableStateFlow<Float>
         private set
 
+    /** Tick boxes on the left of list items instead of the right (see [Identity.tickOnLeft]). */
+    lateinit var tickOnLeft: MutableStateFlow<Boolean>
+        private set
+
     /** The app's background and photo colours, for screens outside groups (see [Identity.appLook]). */
     lateinit var appLook: MutableStateFlow<Look>
         private set
@@ -70,6 +74,7 @@ class IntackApp : Application() {
         sync = SyncManager(this, repo, identity)
         appTheme = MutableStateFlow(identity.themeId)
         textScale = MutableStateFlow(identity.textScale)
+        tickOnLeft = MutableStateFlow(identity.tickOnLeft)
         appLook = MutableStateFlow(identity.appLook)
         myColor = MutableStateFlow(identity.myColor)
         Notifications.createChannels(this)
@@ -145,6 +150,15 @@ class IntackApp : Application() {
     fun setTextScale(scale: Float) {
         identity.textScale = scale
         textScale.value = scale
+    }
+
+    fun setTickOnLeft(left: Boolean) {
+        identity.tickOnLeft = left
+        tickOnLeft.value = left
+    }
+
+    fun setKeepAwake(listId: String, awake: Boolean) {
+        identity.awakeLists = if (awake) identity.awakeLists + listId else identity.awakeLists - listId
     }
 
     fun setDiagnostics(enabled: Boolean) {
