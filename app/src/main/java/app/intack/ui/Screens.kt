@@ -588,7 +588,7 @@ internal fun ListScreen(app: IntackApp, list: TodoList, status: SyncStatus, snac
     val names by app.sync.names.collectAsStateWithLifecycle()
     if (showHistory) return HistoryScreen(list, app.identity.deviceId, names, onBack = { showHistory = false })
     val context = LocalContext.current
-    // For shopping: the screen stays on (remembered per list), and a lock stops bumps ticking things.
+    // For shopping: the screen stays on (remembered per list), and a lock stops bumps changing things.
     var awake by remember(list.id) { mutableStateOf(list.id in app.identity.awakeLists) }
     var locked by rememberSaveable(list.id) { mutableStateOf(false) }
     val view = LocalView.current
@@ -609,8 +609,8 @@ internal fun ListScreen(app: IntackApp, list: TodoList, status: SyncStatus, snac
                 }
                 IconButton(onClick = {
                     // Unlocking takes a hold on the bar at the bottom, so a bump can't undo the lock either.
-                    if (!locked) locked = true
-                    Toast.makeText(context, "Locked: hold the bar at the bottom to unlock", Toast.LENGTH_SHORT).show()
+                    // No toast: it would sit over that bar, which already says how to unlock.
+                    locked = true
                 }) {
                     if (locked) Icon(Icons.Filled.Lock, "Locked", tint = MaterialTheme.colorScheme.primary)
                     else Icon(Icons.Outlined.LockOpen, "Lock the list")
@@ -758,9 +758,8 @@ internal fun ListBody(
                         val checkbox = @Composable {
                             Checkbox(
                                 checked = item.checked,
-                                onCheckedChange = if (locked) null else ({ scope.launch { app.repo.setChecked(list.id, item.id, it) } }),
-                                // Without a click handler it would shrink; keep its touch size so nothing shifts.
-                                modifier = if (locked) Modifier.padding(12.dp) else Modifier,
+                                // Ticking still works when locked: that's what the list is for in the shop.
+                                onCheckedChange = { scope.launch { app.repo.setChecked(list.id, item.id, it) } },
                                 colors = CheckboxDefaults.colors(
                                     // Ticked in the colour of whoever ticked it.
                                     checkedColor = personColor(item.version.by),
