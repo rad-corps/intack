@@ -12,7 +12,8 @@ GROUP=${GROUP:-Family}
 EVERY=${EVERY:-60}
 SDK="$LOCALAPPDATA/Android/Sdk"
 export PATH="$SDK/platform-tools:$PATH"
-STATE=${STATE:-"$LOCALAPPDATA/intack-dispatcher"}
+# A Unix-style path: xargs and friends treat the backslashes in $LOCALAPPDATA as escapes.
+STATE=$(cygpath -u "${STATE:-"$LOCALAPPDATA/intack-dispatcher"}")
 mkdir -p "$STATE/items" "$STATE/runs"
 DEV() { bash "$REPO/scripts/dev.sh" "$@"; }
 log() { echo "$(date '+%F %T') $*" | tee -a "$STATE/log.txt"; }
@@ -41,6 +42,10 @@ run_claude() { # item-id session-id prompt [resume]
   local status; status=$(grep -o "STATUS: [A-Z]*.*" "$out" | tail -1)
   echo "${status:-STATUS: FAILED no status line (see $out)}"
 }
+
+# An item's text and note as the list shows them ("[ ] text  <uuid>  by Name", then the note, indented).
+item_text() { printf '%s\n' "$2" | grep -F "$1" | sed -E 's/^\[.\] //; s/  [0-9a-f-]{36}  by .*//'; }
+item_note() { printf '%s\n' "$2" | awk -v id="$1" 'index($0, id) { on = 1; next } on && /^      / { sub(/^      /, ""); print; next } { on = 0 }'; }
 
 prompt_for() { # id text note who
   cat <<EOF
@@ -87,12 +92,18 @@ while true; do
   if msgs=$(DEV messages "$GROUP" | tr -d '\r') && [[ $msgs == "Messages in"* ]]; then
     new=$(comm -13 <(sort "$seen") <(printf '%s\n' "$msgs" | sort) | grep -v '^Messages in' | grep -v '  me: ' || true)
     printf '%s\n' "$msgs" > "$seen"
-    waiting=$(grep -l "^waiting" "$STATE/items"/* 2>/dev/null | xargs -r ls -t | head -1)
+    waiting=$(ls -t "$STATE/items"/* 2>/dev/null | while read -r f; do grep -q "^waiting" "$f" && { echo "$f"; break; }; done)
     if [ -n "$new" ] && [ -n "$waiting" ]; then
       id=$(basename "$waiting"); session=$(sed -n 2p "$waiting")
       log "reply for $id; resuming"
+      # The item as it is now: people often answer by editing it or adding to its note.
+      shown=$(DEV show "$LIST" | tr -d '\r'); note=$(item_note "$id" "$shown")
       status=$(run_claude "$id" "$session" "Reply in $GROUP's Messages:
 $new
+
+The item now reads:
+  Item: $(item_text "$id" "$shown")
+  Note: ${note:-(none)}
 
 Carry on with the item. End with exactly one line: STATUS: DONE, STATUS: WAITING, or STATUS: FAILED <why>." resume)
       log "$id: $status"
@@ -108,10 +119,11 @@ Carry on with the item. End with exactly one line: STATUS: DONE, STATUS: WAITING
     id=$(grep -oE '[0-9a-f]{8}-[0-9a-f-]{27}' <<<"$line" | tail -1)
     [ -n "$id" ] && [ ! -f "$STATE/items/$id" ] && { echo "$id"; break; }
   done)
+  # Start an item only once it has stayed the same for a round, so a note still being typed isn't missed.
   if [ -n "$next" ]; then
-    text=$(printf '%s\n' "$shown" | grep -F "$next" | sed -E 's/^\[ \] //; s/  [0-9a-f-]{36}  by .*//')
+    text=$(item_text "$next" "$shown"); note=$(item_note "$next" "$shown")
+    [ "$next $text $note" != "${settling:-}" ] && { settling="$next $text $note"; sleep "$EVERY"; continue; }
     who=$(printf '%s\n' "$shown" | grep -F "$next" | sed -E 's/.*  by //')
-    note=$(printf '%s\n' "$shown" | awk -v id="$next" 'index($0, id) { on = 1; next } on && /^      / { sub(/^      /, ""); print; next } { on = 0 }')
     session=$(powershell.exe -NoProfile -Command "[guid]::NewGuid().ToString()" | tr -d '\r')
     printf 'running\n%s\n' "$session" > "$STATE/items/$next"
     log "new item $next: $text (session $session)"
