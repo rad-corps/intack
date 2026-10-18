@@ -38,7 +38,13 @@ ensure_app() {
 run_claude() { # item-id session-id prompt [resume]
   local out="$STATE/runs/$1-$(date +%Y%m%d-%H%M%S).txt"
   local how=(--session-id "$2"); [ "${4:-}" = resume ] && how=(--resume "$2")
-  (cd "$REPO" && claude -p "${how[@]}" --permission-mode bypassPermissions "$3" > "$out" 2>&1)
+  # The session has the repo to itself until it ends (scripts/repo-lock.js; other sessions' edits are blocked).
+  node "$REPO/scripts/repo-lock.js" acquire "$2" "$1" >/dev/null || { echo "STATUS: BUSY"; return; }
+  (cd "$REPO" && claude -p "${how[@]}" --permission-mode bypassPermissions "$3" > "$out" 2>&1) &
+  local job=$!
+  node "$REPO/scripts/repo-lock.js" setpid "$2" "$(cat /proc/$job/winpid 2>/dev/null || echo 0)"
+  wait $job
+  node "$REPO/scripts/repo-lock.js" release "$2"
   local status; status=$(grep -o "STATUS: [A-Z]*.*" "$out" | tail -1)
   echo "${status:-STATUS: FAILED no status line (see $out)}"
 }
@@ -85,6 +91,8 @@ seen="$STATE/messages.seen"
 log "watching $LIST in $GROUP"
 while true; do
   ensure_app
+  # Wait while another agent holds the repo, or anyone has changes in progress.
+  if [ "$(node "$REPO/scripts/repo-lock.js" status)" != free ]; then sleep "$EVERY"; continue; fi
   # Wait while someone (Adam or an interactive session) has changes in progress.
   if [ -n "$(git -C "$REPO" status --porcelain)" ]; then sleep "$EVERY"; continue; fi
 
@@ -130,6 +138,8 @@ Carry on with the item. End with exactly one line: STATUS: DONE, STATUS: WAITING
     DEV say "$GROUP" "Starting on: $text" >/dev/null
     status=$(run_claude "$next" "$session" "$(prompt_for "$next" "$text" "$note" "$who")")
     log "$next: $status"
+    # Lost a race for the repo: try this item again later.
+    [ "$status" = "STATUS: BUSY" ] && { rm -f "$STATE/items/$next"; sleep "$EVERY"; continue; }
     [[ $status == "STATUS: FAILED"* ]] && DEV say "$GROUP" "Couldn't finish: $text (${status#STATUS: FAILED }). Adam can see the details on the PC." >/dev/null
     printf '%s\n%s\n' "$(echo "${status#STATUS: }" | cut -d' ' -f1 | tr A-Z a-z)" "$session" > "$STATE/items/$next"
     continue
