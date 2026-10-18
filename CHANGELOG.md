@@ -5,6 +5,8 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+## v0.9.2 — 2026-10-18
+
 **A note before you add.** The new button at the end of the "Add an item" box opens the full item before
 it goes on the list, so you can give it a note (or a photo, or a section) straight away, then tap **Add**.
 
