@@ -75,6 +75,9 @@ what's in it, so joining the group is enough to get everything:
 - **`group-look`** holds the shared look as JSON (theme, accent, photo strength, photo id). The photo is
   a ~960 px JPEG sent as base64 pieces (`photo:<id>:<n>`, 16 K characters each, one relay event apiece)
   and reassembled into a file once all pieces have arrived.
+- **Item photos** work the same way inside a list: the item records the photo's id and piece count
+  (`image`, `imageParts`, last-writer-wins like notes), and the pieces are items `img:<id>:<n>` stored as
+  deleted, so versions without photos keep them out of sight. Removing a photo empties its pieces.
 - People joining and leaving are announced once, for the group, not for each of its spaces.
 
 ### Data model and conflict resolution
