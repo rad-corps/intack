@@ -5,6 +5,8 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+## v0.9.3 — 2026-10-18
+
 **Headings stand out on photos.** When a group has a photo behind its lists, each section heading now
 sits on a soft pill of the page colour, so headings like "Fridge" or "Pantry" no longer get lost in the picture.
 
