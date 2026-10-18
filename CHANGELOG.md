@@ -5,6 +5,8 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+## v0.9.1 — 2026-10-18
+
 **Tick while locked.** A locked list still lets you tick and untick items; it just stops changes to the
 words, order and new items. And locking no longer pops up a message over the "hold here to unlock" bar.
 
