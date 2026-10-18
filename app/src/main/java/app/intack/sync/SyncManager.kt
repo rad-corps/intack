@@ -321,6 +321,8 @@ class SyncManager(context: Context, private val repo: ListRepository, private va
         var caughtUp = false
         /** Asked for the whole list via the relays and waiting for it (e.g. just joined). */
         var awaitingFull = false
+        /** Part of the whole list has come in through the relays and the rest is on its way. */
+        var fullArriving = false
         var lastFullSentAt = 0L
         var lastAskedAt = 0L
         /** Others seen through the relays: device id -> (name, when). */
@@ -387,10 +389,16 @@ class SyncManager(context: Context, private val repo: ListRepository, private va
                         swarm.openPeers.forEach { sendItems(swarm, it, result.changes.map { c -> c.second }, result.newAudit) }
                     }
                 }
+                // The first piece of a several-part reply: show that it's coming.
+                if (message.full && !message.last && relayList.awaitingFull && !relayList.fullArriving) {
+                    relayList.fullArriving = true
+                    publishStatus()
+                }
                 val quiet = message.full && relayList.awaitingFull
                 if (message.full && message.last) repo.markFullSynced(listId)
                 if (message.full && message.last && relayList.awaitingFull) {
                     relayList.awaitingFull = false
+                    relayList.fullArriving = false
                     relayList.trace("received the whole list")
                     val list = repo.lists.value[listId]
                     if (list != null && !list.createdHere && list.groupId == null) {
@@ -523,7 +531,7 @@ class SyncManager(context: Context, private val repo: ListRepository, private va
                 // A device's first full sync (possibly several chunks) is just us joining, not news.
                 if (message.full && message.last) {
                     repo.markFullSynced(swarm.listId)
-                    relayLists[swarm.listId]?.awaitingFull = false
+                    relayLists[swarm.listId]?.let { it.awaitingFull = false; it.fullArriving = false }
                 }
                 val quiet = message.full && peer in firstSyncPeers
                 if (message.full && message.last && firstSyncPeers.remove(peer)) {
@@ -656,7 +664,8 @@ class SyncManager(context: Context, private val repo: ListRepository, private va
             SyncStatus(
                 trackersOnline = pool?.online ?: 0,
                 peerNames = direct,
-                receiving = open.any { it in firstSyncPeers } || relayLists[id]?.awaitingFull == true,
+                // Asking for the whole list isn't getting it: with nobody else online, that would say "Getting the list…" forever.
+                receiving = open.any { it in firstSyncPeers } || relayLists[id]?.fullArriving == true,
                 online = online,
                 relaysOnline = relays?.online ?: 0,
                 relayPeerNames = viaRelay,
