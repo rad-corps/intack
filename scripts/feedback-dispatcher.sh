@@ -65,6 +65,10 @@ outside this repo), ask in the group's Messages rather than guessing, starting w
 then stop. You'll be resumed with the reply. If the item is a question rather than something to build,
 answer it there and tick the item. Only work on this item.
 
+The dispatcher has already told the group you're starting. When you finish, post one short message
+in plain words saying what changed and where to find it (e.g. the version, and where it is in the app):
+  bash scripts/dev.sh say "$GROUP" "Done: <item>. <what changed>"
+
 End your final reply with exactly one line: STATUS: DONE, STATUS: WAITING, or STATUS: FAILED <why>.
 EOF
 }
@@ -92,6 +96,7 @@ $new
 
 Carry on with the item. End with exactly one line: STATUS: DONE, STATUS: WAITING, or STATUS: FAILED <why>." resume)
       log "$id: $status"
+      [[ $status == "STATUS: FAILED"* ]] && DEV say "$GROUP" "Couldn't finish that one (${status#STATUS: FAILED }). Adam can see the details on the PC." >/dev/null
       printf '%s\n%s\n' "$(echo "${status#STATUS: }" | cut -d' ' -f1 | tr A-Z a-z)" "$session" > "$waiting"
       continue
     fi
@@ -110,8 +115,10 @@ Carry on with the item. End with exactly one line: STATUS: DONE, STATUS: WAITING
     session=$(powershell.exe -NoProfile -Command "[guid]::NewGuid().ToString()" | tr -d '\r')
     printf 'running\n%s\n' "$session" > "$STATE/items/$next"
     log "new item $next: $text (session $session)"
+    DEV say "$GROUP" "Starting on: $text" >/dev/null
     status=$(run_claude "$next" "$session" "$(prompt_for "$next" "$text" "$note" "$who")")
     log "$next: $status"
+    [[ $status == "STATUS: FAILED"* ]] && DEV say "$GROUP" "Couldn't finish: $text (${status#STATUS: FAILED }). Adam can see the details on the PC." >/dev/null
     printf '%s\n%s\n' "$(echo "${status#STATUS: }" | cut -d' ' -f1 | tr A-Z a-z)" "$session" > "$STATE/items/$next"
     continue
   fi
