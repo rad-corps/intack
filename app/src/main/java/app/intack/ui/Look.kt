@@ -14,6 +14,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -102,10 +103,16 @@ fun LookSurface(look: ResolvedLook, content: @Composable () -> Unit) {
         val scheme = if (photo == null) colors else colors.copy(background = Color.Transparent, surface = Color.Transparent)
         // Screens without a Scaffold (e.g. the welcome screen) still get the theme's text colour.
         MaterialTheme(colorScheme = scheme, typography = typographyIn(look.style.font)) {
-            CompositionLocalProvider(LocalContentColor provides colors.onBackground, LocalListStyle provides look.style, content = content)
+            CompositionLocalProvider(LocalContentColor provides colors.onBackground, LocalListStyle provides look.style, LocalPhotoBacking provides colors.background.takeIf { photo != null }, content = content)
         }
     }
 }
+
+/**
+ * The page colour while a photo fills the background (null otherwise): text that sits straight on the
+ * page, such as section headings, goes on a patch of it so it doesn't get lost in the picture.
+ */
+val LocalPhotoBacking = compositionLocalOf<Color?> { null }
 
 /** How opaque the veil over the photo is: a strong photo still keeps a quarter veil for legibility. */
 fun veil(strength: Float) = 1f - strength.coerceIn(0f, 1f) * 0.75f

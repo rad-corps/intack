@@ -743,15 +743,32 @@ internal fun ListBody(
                                 val handle = @Composable {
                                     Icon(painterResource(R.drawable.ic_drag_handle), "Move heading", tint = MaterialTheme.colorScheme.outline, modifier = dragHandle.padding(12.dp))
                                 }
-                                if (!tickOnLeft) handle()
-                                Text(
-                                    item.text,
-                                    Modifier.weight(1f).padding(vertical = 8.dp),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.secondary,
-                                )
-                                if (tickOnLeft) handle()
+                                val title = @Composable { modifier: Modifier ->
+                                    Text(
+                                        item.text,
+                                        modifier.padding(vertical = 8.dp),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.secondary,
+                                    )
+                                }
+                                val backing = LocalPhotoBacking.current
+                                if (backing == null || riding != null) {
+                                    if (!tickOnLeft) handle()
+                                    title(Modifier.weight(1f))
+                                    if (tickOnLeft) handle()
+                                } else {
+                                    // Over a photo the heading and its handle sit on a pill of the page colour,
+                                    // or they get lost in the picture.
+                                    Row(
+                                        Modifier.padding(horizontal = 8.dp).clip(CircleShape).background(backing.copy(alpha = 0.8f)),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        if (!tickOnLeft) handle()
+                                        title(Modifier.padding(start = if (tickOnLeft) 16.dp else 0.dp, end = if (tickOnLeft) 0.dp else 16.dp))
+                                        if (tickOnLeft) handle()
+                                    }
+                                }
                             }
                             riding?.forEach { CarriedItem(it, tickOnLeft) }
                         }
