@@ -36,11 +36,11 @@ ensure_app() {
 }
 
 # Runs Claude on an item: a new session, or a resumed one with a reply. Prints the session's status.
-run_claude() { # item-id session-id prompt [resume]
+run_claude() { # item-id session-id prompt [resume] [item-text]
   local out="$STATE/runs/$1-$(date +%Y%m%d-%H%M%S).txt"
   local how=(--session-id "$2"); [ "${4:-}" = resume ] && how=(--resume "$2")
   # The session has the repo to itself until it ends (scripts/repo-lock.js; other sessions' edits are blocked).
-  node "$LOCK" acquire "$2" "$1" >/dev/null || { echo "STATUS: BUSY"; return; }
+  node "$LOCK" acquire "$2" "${5:-$1}" >/dev/null || { echo "STATUS: BUSY"; return; }
   (cd "$REPO" && claude -p "${how[@]}" --permission-mode bypassPermissions "$3" > "$out" 2>&1) &
   local job=$!
   node "$LOCK" setpid "$2" "$(cat /proc/$job/winpid 2>/dev/null || echo 0)"
@@ -137,7 +137,7 @@ Carry on with the item. End with exactly one line: STATUS: DONE, STATUS: WAITING
     printf 'running\n%s\n' "$session" > "$STATE/items/$next"
     log "new item $next: $text (session $session)"
     DEV say "$GROUP" "Starting on: $text" >/dev/null
-    status=$(run_claude "$next" "$session" "$(prompt_for "$next" "$text" "$note" "$who")")
+    status=$(run_claude "$next" "$session" "$(prompt_for "$next" "$text" "$note" "$who")" new "$text")
     log "$next: $status"
     # Lost a race for the repo: try this item again later.
     [ "$status" = "STATUS: BUSY" ] && { rm -f "$STATE/items/$next"; sleep "$EVERY"; continue; }
