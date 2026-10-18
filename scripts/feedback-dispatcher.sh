@@ -42,10 +42,11 @@ run_claude() { # item-id session-id prompt [resume]
   echo "${status:-STATUS: FAILED no status line (see $out)}"
 }
 
-prompt_for() { # id text note
+prompt_for() { # id text note who
   cat <<EOF
 You were started automatically by scripts/feedback-dispatcher.sh, with nobody watching this session.
-Adam added this suggestion to a list (id $LIST) in the Intack group "$GROUP":
+${4:-Someone} added this suggestion to a list (id $LIST) in the Intack group "$GROUP". Adam and his wife
+are both in the group, and either of them may direct you.
 
   Item id: $1
   Item: $2
@@ -54,12 +55,13 @@ Adam added this suggestion to a list (id $LIST) in the Intack group "$GROUP":
 Work it end to end, following the project's usual conventions and your memory: build it, run the unit
 tests, check it on the bigbox emulator (already running, debug app open), commit to main, and release
 with scripts/release.ps1 (Adam has said to release without asking). Then update the item through
-scripts/dev.sh: keep Adam's note text and add a plain-words line such as "Done in v0.9.1: ...", then
+scripts/dev.sh: keep the original note text and add a plain-words line such as "Done in v0.9.1: ...", then
 tick it:  bash scripts/dev.sh note $LIST $1 "<note>"  and  bash scripts/dev.sh tick $LIST $1
 Leave the emulator with the debug app open on its group screen, and the git tree clean.
 
-If you need a decision or more information from Adam, ask in the group's Messages, starting with the
-item's name:  bash scripts/dev.sh say "$GROUP" "<item>: <question>"
+Whenever you need clarification, a decision, or permission (anything risky, destructive, costly, or
+outside this repo), ask in the group's Messages rather than guessing, starting with the item's name:
+  bash scripts/dev.sh say "$GROUP" "<item>: <question>"
 then stop. You'll be resumed with the reply. If the item is a question rather than something to build,
 answer it there and tick the item. Only work on this item.
 
@@ -74,7 +76,7 @@ seen="$STATE/messages.seen"
 log "watching $LIST in $GROUP"
 while true; do
   ensure_app
-  # Wait while someone (Adam or another session) has changes in progress.
+  # Wait while someone (Adam or an interactive session) has changes in progress.
   if [ -n "$(git -C "$REPO" status --porcelain)" ]; then sleep "$EVERY"; continue; fi
 
   # Replies: new messages from others go to the item that asked most recently.
@@ -103,11 +105,12 @@ Carry on with the item. End with exactly one line: STATUS: DONE, STATUS: WAITING
   done)
   if [ -n "$next" ]; then
     text=$(printf '%s\n' "$shown" | grep -F "$next" | sed -E 's/^\[ \] //; s/  [0-9a-f-]{36}  by .*//')
+    who=$(printf '%s\n' "$shown" | grep -F "$next" | sed -E 's/.*  by //')
     note=$(printf '%s\n' "$shown" | awk -v id="$next" 'index($0, id) { on = 1; next } on && /^      / { sub(/^      /, ""); print; next } { on = 0 }')
     session=$(powershell.exe -NoProfile -Command "[guid]::NewGuid().ToString()" | tr -d '\r')
     printf 'running\n%s\n' "$session" > "$STATE/items/$next"
     log "new item $next: $text (session $session)"
-    status=$(run_claude "$next" "$session" "$(prompt_for "$next" "$text" "$note")")
+    status=$(run_claude "$next" "$session" "$(prompt_for "$next" "$text" "$note" "$who")")
     log "$next: $status"
     printf '%s\n%s\n' "$(echo "${status#STATUS: }" | cut -d' ' -f1 | tr A-Z a-z)" "$session" > "$STATE/items/$next"
     continue

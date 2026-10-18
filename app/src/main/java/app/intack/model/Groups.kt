@@ -74,7 +74,8 @@ const val PHOTO_PART_CHARS = 16_000
 
 fun photoPartId(photoId: String, index: Int) = "$PHOTO_PREFIX$photoId:$index"
 
-val Item.isPhotoPart: Boolean get() = id.startsWith(PHOTO_PREFIX)
+/** A piece of a group photo or of a list item's photo (see Images.kt). */
+val Item.isPhotoPart: Boolean get() = id.startsWith(PHOTO_PREFIX) || isImagePart
 
 private val lookJson = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
 

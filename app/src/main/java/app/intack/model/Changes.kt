@@ -50,6 +50,13 @@ fun describeChange(before: Item?, after: Item): String? = when {
                 else -> "changed the note on ${after.text}: ${notePreview(after.note)}"
             },
         )
+        if (before.image != after.image) add(
+            when {
+                after.image == null -> "removed the photo from ${after.text}"
+                before.image == null -> "added a photo to ${after.text}"
+                else -> "changed the photo on ${after.text}"
+            },
+        )
     }.joinToString(", ").ifEmpty { null }
 }
 
@@ -61,26 +68,37 @@ fun notePreview(note: String): String {
 
 private const val NOTE_PREVIEW_CHARS = 60
 
-/** Notes are edited without a new content version, so a change to only the note is by whoever wrote it. */
+/** Notes and photos are edited without a new content version, so a change to only one is by whoever made it. */
 private fun noteOnly(before: Item?, after: Item) =
     before != null && before.version == after.version && before.noteVersion != after.noteVersion && after.noteVersion != null
 
-/** The version that made this change: the item's, or the note's for a note-only change. */
-fun changeVersion(before: Item?, after: Item): Version = if (noteOnly(before, after)) after.noteVersion!! else after.version
+private fun imageOnly(before: Item?, after: Item) =
+    before != null && before.version == after.version && before.imageVersion != after.imageVersion && after.imageVersion != null
+
+/** The version that made this change: the item's, or the note's or photo's for a change to only that. */
+fun changeVersion(before: Item?, after: Item): Version = when {
+    noteOnly(before, after) -> after.noteVersion!!
+    imageOnly(before, after) -> after.imageVersion!!
+    else -> after.version
+}
 
 /**
  * The audit entry for a local edit, or null if the edit isn't worth recording (e.g. a move).
- * [byName] is who made it, for note-only changes, which don't record an editor.
+ * [byName] is who made it, for note-only and photo-only changes, which don't record an editor.
  */
 fun auditEntryFor(before: Item?, after: Item, byName: String = after.editor): AuditEntry? {
     val description = describeChange(before, after) ?: return null
     val version = changeVersion(before, after)
     return AuditEntry(
-        id = if (noteOnly(before, after)) "${after.id}/note/${version.ts}/${version.by}" else "${after.id}/${version.ts}/${version.by}",
+        id = when {
+            noteOnly(before, after) -> "${after.id}/note/${version.ts}/${version.by}"
+            imageOnly(before, after) -> "${after.id}/image/${version.ts}/${version.by}"
+            else -> "${after.id}/${version.ts}/${version.by}"
+        },
         itemId = after.id,
         ts = version.ts,
         by = version.by,
-        byName = if (noteOnly(before, after)) byName else after.editor,
+        byName = if (noteOnly(before, after) || imageOnly(before, after)) byName else after.editor,
         description = description,
     )
 }

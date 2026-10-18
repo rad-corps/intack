@@ -60,6 +60,13 @@ data class Item(
      */
     val note: String? = null,
     val noteVersion: Version? = null,
+    /**
+     * A photo of the item: its id and how many pieces it travels in (see Images.kt). Synced as its own
+     * last-writer-wins value (stamped by [imageVersion]), like [note].
+     */
+    val image: String? = null,
+    val imageParts: Int = 0,
+    val imageVersion: Version? = null,
 ) {
     val position: Double get() = pos ?: createdAt.toDouble()
     val localDate: LocalDate? get() = date?.let { runCatching { LocalDate.parse(it) }.getOrNull() }

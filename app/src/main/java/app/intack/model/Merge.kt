@@ -71,6 +71,8 @@ fun TodoList.merge(remote: Collection<Item>): MergeResult {
         // So is the note: the latest wins, and one that came through a version without notes doesn't count.
         val latestNote = maxOf(l, r, compareBy(nullsFirst()) { it.noteVersion })
         merged = merged.copy(note = latestNote.note, noteVersion = latestNote.noteVersion)
+        val latestImage = maxOf(l, r, compareBy(nullsFirst()) { it.imageVersion })
+        merged = merged.copy(image = latestImage.image, imageParts = latestImage.imageParts, imageVersion = latestImage.imageVersion)
         if (merged != l) {
             items[r.id] = merged
             accepted += merged

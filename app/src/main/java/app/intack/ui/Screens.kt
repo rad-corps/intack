@@ -144,6 +144,7 @@ import app.intack.model.afterHeadingMove
 import app.intack.model.STATUS_DELETED
 import app.intack.model.ShareLink
 import app.intack.model.SpaceKind
+import app.intack.model.PhotoChoice
 import app.intack.model.TodoList
 import app.intack.model.lastEdited
 import app.intack.model.headings
@@ -796,6 +797,7 @@ internal fun ListBody(
                                 )
                             }
                         }
+                        if (item.image != null) ItemThumbnail(app, current, item)
                         if (tickOnLeft) handle() else checkbox()
                     }
                 }
@@ -841,17 +843,19 @@ internal fun ListBody(
         // The latest version, in case someone changed it meanwhile.
         val item = list.items[open.id]?.takeIf { !it.deleted } ?: return@let
         val history = remember(list.audit, item.id) { list.audit.values.filter { it.itemId == item.id }.sortedByDescending { it.ts } }
+        val image = rememberItemImage(app, list, item)
         ListItemSheet(
             item = item,
             headings = list.headings,
             section = sectionOf(list.visibleItems, item.id),
             onDismiss = { editing = null },
-            onSave = { text, headingId, note ->
+            onSave = { text, headingId, note, photo ->
                 editing = null
                 val before = sectionOf(list.visibleItems, item.id)?.id
                 app.save {
                     app.repo.editText(list.id, item.id, text)
                     if (!item.heading) app.repo.setNote(list.id, item.id, note)
+                    if (!item.heading && photo != PhotoChoice.Keep) app.repo.setImage(list.id, item.id, (photo as? PhotoChoice.Own)?.jpeg)
                     if (!item.heading && headingId != before) app.repo.moveToSection(list.id, item.id, headingId)
                 }
             },
@@ -861,6 +865,7 @@ internal fun ListBody(
             },
             history = history,
             historyRow = { AuditRow(it, app.identity.deviceId, names, showDate = true, compact = true) },
+            image = image,
         )
     }
 

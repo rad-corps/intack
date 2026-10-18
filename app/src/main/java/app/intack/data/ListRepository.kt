@@ -43,6 +43,10 @@ import app.intack.model.planGroup
 import app.intack.model.sectionsFromPositions
 import app.intack.model.syncedGroupName
 import app.intack.model.withNote
+import app.intack.model.imageBase64
+import app.intack.model.imageParts
+import app.intack.model.imagePartId
+import app.intack.model.withImage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -562,8 +566,56 @@ class ListRepository(private val dir: File, private val identity: Identity) {
         list.items[itemId]?.takeIf { (it.note ?: "") != note.trim() }?.withNote(note, identity.deviceId, System.currentTimeMillis())
     }
 
-    suspend fun deleteItem(listId: String, itemId: String) =
+    /**
+     * Gives a list item a photo ([jpeg], already shrunk to send), or removes its photo with null. The
+     * photo goes to everyone as pieces (see Images.kt); the old one's pieces are cleared.
+     */
+    suspend fun setImage(listId: String, itemId: String, jpeg: ByteArray?): Unit = withContext(NonCancellable) {
+        val item = _lists.value[listId]?.items?.get(itemId) ?: return@withContext
+        if (jpeg == null && item.image == null) return@withContext
+        item.image?.let { clearImage(listId, it) }
+        val now = System.currentTimeMillis()
+        if (jpeg == null) {
+            putLocal(listId) { it.items[itemId]?.withImage(null, 0, identity.deviceId, now) }
+            return@withContext
+        }
+        val imageId = UUID.randomUUID().toString().take(8)
+        withContext(Dispatchers.IO) { imageFile(imageId).apply { parentFile?.mkdirs() }.writeBytes(jpeg) }
+        val parts = splitPhoto(Base64.getEncoder().encodeToString(jpeg))
+        parts.forEachIndexed { i, text ->
+            putLocal(listId, Item(imagePartId(imageId, i), text, deleted = true, createdAt = now, version = Version(now, identity.deviceId), editor = identity.deviceName))
+        }
+        putLocal(listId) { it.items[itemId]?.withImage(imageId, parts.size, identity.deviceId, now) }
+    }
+
+    /** Empties the pieces of photo [imageId], so they don't linger in everyone's copy. */
+    private suspend fun clearImage(listId: String, imageId: String) {
+        val now = System.currentTimeMillis()
+        _lists.value[listId]?.imageParts(imageId)?.filter { it.text.isNotEmpty() }?.forEach { part ->
+            putLocal(listId, part.edited(identity.deviceId, identity.deviceName, now) { copy(text = "", deleted = true) })
+        }
+        withContext(Dispatchers.IO) { imageFile(imageId).delete() }
+    }
+
+    /** Where a list item's photo is kept on this phone. */
+    fun imageFile(imageId: String): File = File(File(dir.parentFile, "images"), "$imageId.jpg")
+
+    /** [item]'s photo as a file, put together from its pieces if need be; null until they've all arrived. */
+    suspend fun itemImage(list: TodoList, item: Item): File? = withContext(Dispatchers.IO) {
+        val file = imageFile(item.image ?: return@withContext null)
+        if (file.exists()) return@withContext file
+        val bytes = list.imageBase64(item)?.let { runCatching { Base64.getDecoder().decode(it) }.getOrNull() } ?: return@withContext null
+        file.parentFile?.mkdirs()
+        val tmp = File(file.parentFile, "${file.name}.tmp")
+        tmp.writeBytes(bytes)
+        tmp.renameTo(file)
+        file
+    }
+
+    suspend fun deleteItem(listId: String, itemId: String) {
+        _lists.value[listId]?.items?.get(itemId)?.image?.let { clearImage(listId, it) }
         editItem(listId, itemId) { copy(deleted = true) }
+    }
 
     /**
      * Applies items and audit entries from a peer. Returns what changed locally, so it can be
