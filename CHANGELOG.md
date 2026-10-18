@@ -5,6 +5,8 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+## v0.9.0 — 2026-10-18
+
 **Photos on list items.** Tap an item and choose **Add a photo** to show everyone exactly which one you
 mean. A small copy shows beside the item; tap it to see the whole photo. Change or remove it the same way.
 Everyone needs this version to see photos; older versions just don't show them.
