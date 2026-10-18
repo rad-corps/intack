@@ -15,6 +15,7 @@ export PATH="$SDK/platform-tools:$PATH"
 # A Unix-style path: xargs and friends treat the backslashes in $LOCALAPPDATA as escapes.
 STATE=$(cygpath -u "${STATE:-"$LOCALAPPDATA/intack-dispatcher"}")
 mkdir -p "$STATE/items" "$STATE/runs"
+LOCK=$(cygpath -w "$REPO/scripts/repo-lock.js")   # node needs a Windows path
 DEV() { bash "$REPO/scripts/dev.sh" "$@"; }
 log() { echo "$(date '+%F %T') $*" | tee -a "$STATE/log.txt"; }
 
@@ -39,12 +40,12 @@ run_claude() { # item-id session-id prompt [resume]
   local out="$STATE/runs/$1-$(date +%Y%m%d-%H%M%S).txt"
   local how=(--session-id "$2"); [ "${4:-}" = resume ] && how=(--resume "$2")
   # The session has the repo to itself until it ends (scripts/repo-lock.js; other sessions' edits are blocked).
-  node "$REPO/scripts/repo-lock.js" acquire "$2" "$1" >/dev/null || { echo "STATUS: BUSY"; return; }
+  node "$LOCK" acquire "$2" "$1" >/dev/null || { echo "STATUS: BUSY"; return; }
   (cd "$REPO" && claude -p "${how[@]}" --permission-mode bypassPermissions "$3" > "$out" 2>&1) &
   local job=$!
-  node "$REPO/scripts/repo-lock.js" setpid "$2" "$(cat /proc/$job/winpid 2>/dev/null || echo 0)"
+  node "$LOCK" setpid "$2" "$(cat /proc/$job/winpid 2>/dev/null || echo 0)"
   wait $job
-  node "$REPO/scripts/repo-lock.js" release "$2"
+  node "$LOCK" release "$2"
   local status; status=$(grep -o "STATUS: [A-Z]*.*" "$out" | tail -1)
   echo "${status:-STATUS: FAILED no status line (see $out)}"
 }
@@ -92,7 +93,7 @@ log "watching $LIST in $GROUP"
 while true; do
   ensure_app
   # Wait while another agent holds the repo, or anyone has changes in progress.
-  if [ "$(node "$REPO/scripts/repo-lock.js" status)" != free ]; then sleep "$EVERY"; continue; fi
+  if [ "$(node "$LOCK" status)" != free ]; then sleep "$EVERY"; continue; fi
   # Wait while someone (Adam or an interactive session) has changes in progress.
   if [ -n "$(git -C "$REPO" status --porcelain)" ]; then sleep "$EVERY"; continue; fi
 
