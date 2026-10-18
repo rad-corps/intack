@@ -5,6 +5,8 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+## v0.8.3 — 2026-10-18
+
 **No more endless "Getting the list…".** Opening a list you already have, while the person who made it
 is offline, no longer shows "Getting the list…" with nothing coming. Your copy is shown straight away, and
 the phone quietly fetches anything older it might be missing the next time they're online.
