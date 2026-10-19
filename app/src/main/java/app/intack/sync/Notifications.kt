@@ -26,11 +26,15 @@ object Notifications {
     const val CHANNEL_REMINDERS = "reminders"
     const val CHANNEL_MESSAGES = "messages"
     const val EXTRA_LIST_ID = "app.intack.LIST_ID"
+    /** The items a notification was about, to scroll to and highlight once its list is open. */
+    const val EXTRA_ITEM_IDS = "app.intack.ITEM_IDS"
 
     private const val MAX_LINES = 6
 
     /** Change lines shown in each list's notification since it was last opened. */
     private val pendingChanges = mutableMapOf<String, MutableList<String>>()
+    /** The items those lines are about. */
+    private val pendingItems = mutableMapOf<String, MutableList<String>>()
 
     fun createChannels(context: Context) {
         context.getSystemService(NotificationManager::class.java).createNotificationChannels(
@@ -78,10 +82,13 @@ object Notifications {
         }
         val shown = pendingChanges.getOrPut(event.listId) { mutableListOf() }
         shown += lines.map { if (event.kind == SpaceKind.CHAT) "${event.who}: $it" else "${event.who} $it" }
-        addChangesNotification(context, event, channel, shown)
+        // Messages open on the latest anyway; list items and calendar entries are picked out.
+        val items = pendingItems.getOrPut(event.listId) { mutableListOf() }
+        if (event.kind != SpaceKind.CHAT) items += event.itemIds
+        addChangesNotification(context, event, channel, shown, items.distinct())
     }
 
-    private fun addChangesNotification(context: Context, event: ListEvent.Changed, channel: String, lines: List<String>) {
+    private fun addChangesNotification(context: Context, event: ListEvent.Changed, channel: String, lines: List<String>, itemIds: List<String>) {
         val style = NotificationCompat.InboxStyle()
         lines.takeLast(MAX_LINES).forEach(style::addLine)
         if (lines.size > MAX_LINES) style.setSummaryText("+${lines.size - MAX_LINES} more")
@@ -94,7 +101,7 @@ object Notifications {
                 .setStyle(style)
                 .setNumber(lines.size)
                 .setOnlyAlertOnce(true)
-                .setContentIntent(openAppIntent(context, event.listId))
+                .setContentIntent(openAppIntent(context, event.listId, itemIds))
                 .setAutoCancel(true),
         )
     }
@@ -102,6 +109,7 @@ object Notifications {
     /** The user is looking at the list, so its changes notification is no longer needed. */
     fun clearChanges(context: Context, listId: String) {
         pendingChanges.remove(listId)
+        pendingItems.remove(listId)
         NotificationManagerCompat.from(context).cancel("changes", listId.hashCode())
     }
 
@@ -120,7 +128,7 @@ object Notifications {
             .setContentTitle(context.getString(R.string.conflict_title, conflict.listName))
             .setContentText(conflict.describe())
             .setStyle(NotificationCompat.BigTextStyle().bigText(conflict.describe()))
-            .setContentIntent(openAppIntent(context, conflict.listId))
+            .setContentIntent(openAppIntent(context, conflict.listId, listOf(conflict.winner.id)))
             .setAutoCancel(true)
             .build()
         NotificationManagerCompat.from(context).notify(conflict.winner.id.hashCode(), notification)
@@ -162,17 +170,18 @@ object Notifications {
                 .setContentTitle(title)
                 .setContentText(text)
                 .setCategory(NotificationCompat.CATEGORY_REMINDER)
-                .setContentIntent(openAppIntent(context, calendarId))
+                .setContentIntent(openAppIntent(context, calendarId, listOf(entryId)))
                 .setAutoCancel(true),
         )
     }
 
-    /** Opens the app, on [listId] if given. */
-    fun openAppIntent(context: Context, listId: String? = null): PendingIntent = PendingIntent.getActivity(
+    /** Opens the app, on [listId] if given, picking out [itemIds] in it. */
+    fun openAppIntent(context: Context, listId: String? = null, itemIds: List<String> = emptyList()): PendingIntent = PendingIntent.getActivity(
         context, listId.hashCode(),
         Intent(context, MainActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
-            .putExtra(EXTRA_LIST_ID, listId),
+            .putExtra(EXTRA_LIST_ID, listId)
+            .putExtra(EXTRA_ITEM_IDS, itemIds.toTypedArray()),
         PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
     )
 }

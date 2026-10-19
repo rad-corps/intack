@@ -31,6 +31,7 @@ import app.intack.sync.SyncService
 import app.intack.ui.DiagnosticsOverlay
 import app.intack.ui.QrImage
 import app.intack.ui.IntackRoot
+import app.intack.ui.NotificationFocus
 import kotlinx.coroutines.launch
 import app.intack.ui.IntackTheme
 import app.intack.ui.themeById
@@ -42,7 +43,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        handleIntent(intent)
+        // Only once: turning the phone round recreates the activity with the same intent.
+        if (savedInstanceState == null) handleIntent(intent)
         if (Build.VERSION.SDK_INT >= 33) {
             registerForActivityResult(ActivityResultContracts.RequestPermission()) {}
                 .launch(Manifest.permission.POST_NOTIFICATIONS)
@@ -101,7 +103,10 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleIntent(intent: Intent?) {
-        intent?.getStringExtra(Notifications.EXTRA_LIST_ID)?.let { pendingOpen.value = it }
+        intent?.getStringExtra(Notifications.EXTRA_LIST_ID)?.let { listId ->
+            intent.getStringArrayExtra(Notifications.EXTRA_ITEM_IDS)?.let { NotificationFocus.request(listId, it.toList()) }
+            pendingOpen.value = listId
+        }
         intent?.dataString?.let(ShareLink::parse)?.let { pendingInvite.value = it }
         // A screenshot of someone's QR code shared to Intack from the gallery.
         if (intent?.action == Intent.ACTION_SEND && intent.type?.startsWith("image/") == true) {

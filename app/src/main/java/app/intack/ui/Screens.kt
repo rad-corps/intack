@@ -166,6 +166,11 @@ import com.journeyapps.barcodescanner.BarcodeEncoder
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.mapNotNull
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
@@ -210,13 +215,20 @@ fun IntackRoot(
     /** Shows [listId]: a group's home, a list on top of its group, or a list outside any group. */
     fun open(listId: String) {
         val list = app.repo.lists.value[listId] ?: return
+        // Whatever was open on top (Notifications, say) gives way to what was asked for.
+        notifications = false
+        settings = false
         when {
             list.kind == SpaceKind.GROUP -> show(list.id)
             list.groupId != null -> {
                 show(list.groupId)
-                // The calendar is the group's first tab; lists open on top; messages have their own tab.
-                if (list.kind == SpaceKind.LIST) openSpaceId = list.id
-                if (list.kind == SpaceKind.CHAT) groupTab = GroupTab.MESSAGES
+                // Lists open on top; the calendar and messages are the group's tabs.
+                when (list.kind) {
+                    SpaceKind.LIST -> openSpaceId = list.id
+                    SpaceKind.DIARY -> groupTab = GroupTab.CALENDAR
+                    SpaceKind.CHAT -> groupTab = GroupTab.MESSAGES
+                    SpaceKind.GROUP -> {}
+                }
             }
             else -> {
                 show(OTHER_LISTS)
@@ -640,7 +652,12 @@ internal fun ListBody(
     val tickOnLeft by app.tickOnLeft.collectAsStateWithLifecycle()
     var newText by rememberSaveable(list.id) { mutableStateOf("") }
     val names by app.sync.names.collectAsStateWithLifecycle()
-    val highlighted = rememberRemoteHighlights(app, list.id)
+    val listState = rememberLazyListState()
+    // The items a tapped notification was about: scrolled to, as well as highlighted.
+    val highlighted = rememberRemoteHighlights(app, list.id) { ids ->
+        val shown = if (list.hideHeadings) list.visibleItems.filter { !it.heading } else list.visibleItems
+        shown.indexOfFirst { it.id in ids }.takeIf { it >= 0 }?.let { listState.animateScrollToItem(it) }
+    }
     // On screen, so its changes aren't new any more (bold in the group's lists until then).
     LaunchedEffect(list.id, list.lastEdited) { app.repo.markSeen(list.id) }
 
@@ -674,7 +691,6 @@ internal fun ListBody(
         // Follow changes to the list, except mid-drag, when the order on screen is the drag's.
         LaunchedEffect(shown) { if (dragging == null && carried == null) ordered = shown }
         val target = dragging?.let { id -> sectionOf(ordered, id)?.id }
-        val listState = rememberLazyListState()
         val reorderState = rememberReorderableLazyListState(listState) { from, to ->
             ordered = ordered.toMutableList().apply { add(to.index, removeAt(from.index)) }
         }
@@ -1073,24 +1089,49 @@ internal fun SpaceTopBar(
     }
 }
 
+/** Items a tapped notification was about, per list, until that list is on screen to pick them out. */
+object NotificationFocus {
+    private val requests = MutableStateFlow<Map<String, List<String>>>(emptyMap())
+
+    fun request(listId: String, itemIds: List<String>) {
+        if (itemIds.isNotEmpty()) requests.update { it + (listId to itemIds) }
+    }
+
+    /** [listId]'s requests, each handed out once. */
+    fun requests(listId: String): Flow<List<String>> = requests.mapNotNull { it[listId] }.onEach { ids ->
+        requests.update { if (it[listId] == ids) it - listId else it }
+    }
+}
+
 /**
- * Item ids changed by others in the last moment, for a brief highlight. Also clears the list's
- * "changes" notification, since the user is now looking at it.
+ * Item ids changed by others in the last moment, for a brief highlight, and those a tapped notification
+ * was about, which [onFocus] can scroll to. Also clears the list's "changes" notification, since the
+ * user is now looking at it.
  */
 @Composable
-internal fun rememberRemoteHighlights(app: IntackApp, listId: String): Map<String, Long> {
+internal fun rememberRemoteHighlights(app: IntackApp, listId: String, onFocus: suspend (List<String>) -> Unit = {}): Map<String, Long> {
     val context = LocalContext.current
     val highlighted = remember(listId) { mutableStateMapOf<String, Long>() }
+    val focus by rememberUpdatedState(onFocus)
     LaunchedEffect(listId) {
+        fun highlight(ids: List<String>, millis: Long) {
+            val stamp = System.currentTimeMillis()
+            ids.forEach { highlighted[it] = stamp }
+            launch {
+                delay(millis)
+                ids.forEach { if (highlighted[it] == stamp) highlighted.remove(it) }
+            }
+        }
+        launch {
+            NotificationFocus.requests(listId).collect { ids ->
+                highlight(ids, FOCUS_MS)
+                focus(ids)
+            }
+        }
         Notifications.clearChanges(context, listId)
         app.sync.events.collect { event ->
             if (event !is ListEvent.Changed || event.listId != listId) return@collect
-            val stamp = System.currentTimeMillis()
-            event.itemIds.forEach { highlighted[it] = stamp }
-            launch {
-                delay(HIGHLIGHT_MS)
-                event.itemIds.forEach { if (highlighted[it] == stamp) highlighted.remove(it) }
-            }
+            highlight(event.itemIds, HIGHLIGHT_MS)
         }
     }
     return highlighted
@@ -1587,6 +1628,8 @@ internal fun SyncDot(status: SyncStatus?) {
 }
 
 internal const val HIGHLIGHT_MS = 2_500L
+/** Longer for what a notification was about, to find it on opening. */
+internal const val FOCUS_MS = 5_000L
 
 /** Text size choices: label and scale on top of the phone's own font size. */
 private val TEXT_SIZES = listOf("Normal" to 1f, "Large" to 1.15f, "Larger" to 1.3f)

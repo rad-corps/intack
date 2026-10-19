@@ -5,6 +5,10 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+**Notifications take you to the thing.** Tapping "Sam added milk" opens that list, scrolled to milk and
+lit up for a moment. Calendar alerts open the group's Calendar tab, messages open Messages, and a tap
+closes Settings or Notifications if they were open on top.
+
 ## v0.9.3 — 2026-10-18
 
 **Headings stand out on photos.** When a group has a photo behind its lists, each section heading now
