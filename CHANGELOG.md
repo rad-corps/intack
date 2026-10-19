@@ -5,6 +5,8 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+## v0.9.5 — 2026-10-19
+
 **A tidier Settings.** The developer-only options (crash reports, the diagnostics overlay and the
 connection log) are gone from App settings; they now only appear in test builds.
 
