@@ -5,6 +5,8 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+## v0.9.6 — 2026-10-19
+
 **Room to see what you're adding.** The "Add an item" box at the bottom of a list now grows to up to
 four lines as you type, so you can read a long item and tap anywhere in it to fix a word. The tick on
 the keyboard still adds it.
