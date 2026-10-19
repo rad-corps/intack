@@ -74,9 +74,9 @@ class Identity(context: Context) {
         get() = prefs.getBoolean("listsSeenBaseline", false)
         set(value) = prefs.edit { putBoolean("listsSeenBaseline", value) }
 
-    /** Settings › Diagnostics: an overlay showing where the app spends battery. */
+    /** Settings › Diagnostics (debug builds only): an overlay showing where the app spends battery. */
     var diagnostics: Boolean
-        get() = prefs.getBoolean("diagnostics", false)
+        get() = BuildConfig.DEBUG && prefs.getBoolean("diagnostics", false)
         set(value) = prefs.edit { putBoolean("diagnostics", value) }
 
     /** Text size: 1 is normal; larger for easier reading. Personal, not part of any group's look. */
@@ -168,9 +168,9 @@ class Identity(context: Context) {
         get() = flag("notifyConflicts", true)
         set(value) = setFlag("notifyConflicts", value)
 
-    /** Opt-in: after a crash, offer to email a report to the developer. Off unless the user turns it on. */
+    /** Opt-in, debug builds only: after a crash, offer to email a report to the developer. */
     var offerCrashReports: Boolean
-        get() = prefs.getBoolean("offerCrashReports", false)
+        get() = BuildConfig.DEBUG && prefs.getBoolean("offerCrashReports", false)
         set(value) = prefs.edit { putBoolean("offerCrashReports", value) }
 
     /** Newest crash the user has already been asked about, so each is offered once. */

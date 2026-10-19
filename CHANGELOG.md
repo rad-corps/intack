@@ -5,6 +5,9 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+**A tidier Settings.** The developer-only options (crash reports, the diagnostics overlay and the
+connection log) are gone from App settings; they now only appear in test builds.
+
 ## v0.9.4 — 2026-10-19
 
 **Notifications take you to the thing.** Tapping "Sam added milk" opens that list, scrolled to milk and

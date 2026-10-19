@@ -1380,6 +1380,7 @@ private fun SettingsDialog(app: IntackApp, onDismiss: () -> Unit, onNotification
                     }
                     Switch(checked = background, onCheckedChange = null)
                 }
+                // Developer tools: crash reports, the diagnostics overlay and the connection log.
                 if (BuildConfig.DEBUG) {
                     Spacer(Modifier.height(16.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1389,46 +1390,46 @@ private fun SettingsDialog(app: IntackApp, onDismiss: () -> Unit, onNotification
                     TextButton(onClick = { error("Test crash from Settings (debug)") }, contentPadding = PaddingValues(0.dp)) {
                         Text("Crash now (debug)")
                     }
-                }
-                Spacer(Modifier.height(16.dp))
-                Row(Modifier.fillMaxWidth().toggleable(value = offerCrashReports, onValueChange = { offerCrashReports = it }), verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text("Offer to email crash reports")
-                        Text(
-                            "If the app closes unexpectedly, ask to email a report to the developer. You see it before it's sent.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                    Spacer(Modifier.height(16.dp))
+                    Row(Modifier.fillMaxWidth().toggleable(value = offerCrashReports, onValueChange = { offerCrashReports = it }), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Offer to email crash reports (debug)")
+                            Text(
+                                "If the app closes unexpectedly, ask to email a report to the developer. You see it before it's sent.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Switch(checked = offerCrashReports, onCheckedChange = null)
                     }
-                    Switch(checked = offerCrashReports, onCheckedChange = null)
-                }
-                if (crashReports.isNotEmpty()) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        TextButton(onClick = {
-                            if (!CrashLog.email(context, crashReports)) Toast.makeText(context, "No email app found", Toast.LENGTH_LONG).show()
-                            CrashLog.markSeen(context, app.identity)
-                        }, contentPadding = PaddingValues(0.dp)) { Text("Email crash reports (${crashReports.size})") }
-                        Spacer(Modifier.width(16.dp))
-                        TextButton(onClick = {
-                            CrashLog.clear(context)
-                            crashReports = emptyList()
-                        }) { Text("Delete them") }
+                    if (crashReports.isNotEmpty()) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            TextButton(onClick = {
+                                if (!CrashLog.email(context, crashReports)) Toast.makeText(context, "No email app found", Toast.LENGTH_LONG).show()
+                                CrashLog.markSeen(context, app.identity)
+                            }, contentPadding = PaddingValues(0.dp)) { Text("Email crash reports (${crashReports.size})") }
+                            Spacer(Modifier.width(16.dp))
+                            TextButton(onClick = {
+                                CrashLog.clear(context)
+                                crashReports = emptyList()
+                            }) { Text("Delete them") }
+                        }
                     }
-                }
-                Spacer(Modifier.height(16.dp))
-                Row(Modifier.fillMaxWidth().toggleable(value = diagnostics, onValueChange = { diagnostics = it }), verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text("Diagnostics")
-                        Text(
-                            "Shows where the app spends battery, on top of every screen: processor use, network and sync activity.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                    Spacer(Modifier.height(16.dp))
+                    Row(Modifier.fillMaxWidth().toggleable(value = diagnostics, onValueChange = { diagnostics = it }), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Diagnostics (debug)")
+                            Text(
+                                "Shows where the app spends battery, on top of every screen: processor use, network and sync activity.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Switch(checked = diagnostics, onCheckedChange = null)
                     }
-                    Switch(checked = diagnostics, onCheckedChange = null)
+                    Spacer(Modifier.height(8.dp))
+                    TextButton(onClick = { showLog = true }, contentPadding = PaddingValues(0.dp)) { Text("Connection log (debug)") }
                 }
-                Spacer(Modifier.height(8.dp))
-                TextButton(onClick = { showLog = true }, contentPadding = PaddingValues(0.dp)) { Text("Connection log") }
             }
         },
         confirmButton = {
