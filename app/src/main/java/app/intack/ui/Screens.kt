@@ -858,10 +858,12 @@ internal fun ListBody(
         Row(Modifier.fillMaxWidth().imePadding().padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             OutlinedTextField(
                 value = newText,
-                onValueChange = { newText = it },
+                // Wraps onto a few lines (then scrolls) so a long item can be read and the cursor moved
+                // through it; Enter still adds rather than starting a new line.
+                onValueChange = { newText = it.replace("\n", " ") },
                 placeholder = { Text("Add an item") },
                 trailingIcon = { IconButton(onClick = { drafting = true }) { Icon(Icons.Default.EditNote, "Add with a note or photo") } },
-                singleLine = true,
+                maxLines = 4,
                 shape = RoundedCornerShape(12.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
