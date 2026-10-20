@@ -5,6 +5,8 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+## v0.9.8 — 2026-10-21
+
 **Add straight into a section.** Each heading in a list now has a **+** beside it. Tap it to add an item
 right into that section, with no dragging it there afterwards. The new item sheet opens ready to type, already
 set to that heading (you can still pick another section, or add a note or photo).
