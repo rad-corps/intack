@@ -10,6 +10,7 @@
 #   bash scripts/dev.sh newlist "Adam and Claude" Dev
 #   bash scripts/dev.sh messages Family / say Family "A question"
 #   bash scripts/dev.sh name "Claude" / join "<invite link>"
+#   bash scripts/dev.sh fakejoin Family Sam                (the "Sam joined" notification and sound)
 set -euo pipefail
 export MSYS_NO_PATHCONV=1
 ADB=${ADB:-adb}
@@ -37,5 +38,6 @@ case $cmd in
   say) send say --es group "$(q "$1")" --es text "$(q "$2")" ;;
   name) send name --es text "$(q "$1")" ;;
   join) send join --es text "$(q "$1")" ;;
+  fakejoin) send fakejoin --es group "$(q "$1")" --es text "$(q "$2")" ;;
   *) sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
 esac

@@ -7,6 +7,8 @@ import app.intack.model.ShareLink
 import app.intack.model.SpaceKind
 import app.intack.model.TodoList
 import app.intack.model.messages
+import app.intack.sync.ListEvent
+import app.intack.sync.Notifications
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -85,7 +87,9 @@ class DevBridge : BroadcastReceiver() {
                 val made = repo.addToGroup(group.id, arg("name")) ?: error("couldn't add to ${group.name}")
                 synced(app); "made ${made.name} ${made.id}"
             }
-            else -> error("unknown cmd $cmd; one of lists, show, add, tick, untick, note, messages, say, newlist, newgroup, name, join")
+            // Shows the "Sam joined Family" notification (with its sound) without needing a second phone.
+            "fakejoin" -> group().let { g -> Notifications.showPeople(app, ListEvent.Joined(g.id, g.name, arg("text"))); "notified" }
+            else -> error("unknown cmd $cmd; one of lists, show, add, tick, untick, note, messages, say, newlist, newgroup, name, join, fakejoin")
         }
     }
 

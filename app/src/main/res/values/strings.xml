@@ -9,7 +9,8 @@
     <string name="join_from_image">Join shared list</string>
     <string name="channel_conflicts">Sync conflicts</string>
     <string name="channel_sync">Background sync</string>
-    <string name="channel_people">People joining and leaving</string>
+    <string name="channel_people">People leaving</string>
+    <string name="channel_joins">Someone joins</string>
     <string name="channel_changes">List changes</string>
     <string name="channel_calendar">Calendar changes</string>
     <string name="channel_schedule">Daily schedule</string>

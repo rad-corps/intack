@@ -7,6 +7,8 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.media.AudioAttributes
+import android.net.Uri
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
@@ -20,6 +22,8 @@ object Notifications {
     const val CHANNEL_CONFLICTS = "conflicts"
     const val CHANNEL_SYNC = "sync"
     const val CHANNEL_PEOPLE = "people"
+    /** Its own channel because a channel's sound can't change once made: joins play [R.raw.joined]. */
+    const val CHANNEL_JOINS = "joins"
     const val CHANNEL_CHANGES = "changes"
     const val CHANNEL_CALENDAR = "calendar"
     const val CHANNEL_SCHEDULE = "schedule"
@@ -42,6 +46,12 @@ object Notifications {
                 NotificationChannel(CHANNEL_CONFLICTS, context.getString(R.string.channel_conflicts), NotificationManager.IMPORTANCE_DEFAULT),
                 NotificationChannel(CHANNEL_SYNC, context.getString(R.string.channel_sync), NotificationManager.IMPORTANCE_MIN),
                 NotificationChannel(CHANNEL_PEOPLE, context.getString(R.string.channel_people), NotificationManager.IMPORTANCE_DEFAULT),
+                NotificationChannel(CHANNEL_JOINS, context.getString(R.string.channel_joins), NotificationManager.IMPORTANCE_DEFAULT).apply {
+                    setSound(
+                        Uri.parse("android.resource://${context.packageName}/${R.raw.joined}"),
+                        AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build(),
+                    )
+                },
                 NotificationChannel(CHANNEL_CHANGES, context.getString(R.string.channel_changes), NotificationManager.IMPORTANCE_LOW),
                 NotificationChannel(CHANNEL_CALENDAR, context.getString(R.string.channel_calendar), NotificationManager.IMPORTANCE_DEFAULT),
                 NotificationChannel(CHANNEL_SCHEDULE, context.getString(R.string.channel_schedule), NotificationManager.IMPORTANCE_DEFAULT),
@@ -60,7 +70,7 @@ object Notifications {
         }
         notify(
             context, "people", (event.listId + text).hashCode(),
-            NotificationCompat.Builder(context, CHANNEL_PEOPLE)
+            NotificationCompat.Builder(context, if (event is ListEvent.Joined) CHANNEL_JOINS else CHANNEL_PEOPLE)
                 .setSmallIcon(R.drawable.ic_notification)
                 .setContentTitle(text)
                 .setContentIntent(openAppIntent(context, event.listId))
