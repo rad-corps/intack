@@ -70,7 +70,11 @@ if ($LASTEXITCODE) { throw 'Push failed; the release commit and tag are local on
 $notesFile = New-TemporaryFile
 [IO.File]::WriteAllText($notesFile.FullName, $notes, $utf8)
 gh release create "v$Version" $apk --title "Intack v$Version" --notes-file $notesFile
-Remove-Item $notesFile
-if ($LASTEXITCODE) { throw 'Creating the GitHub release failed; retry with: gh release create ...' }
+if ($LASTEXITCODE) { Remove-Item $notesFile; throw 'Creating the GitHub release failed; retry with: gh release create ...' }
 Write-Host "Released v$Version (versionCode $code)."
-Write-Host "For Google Play, upload: $bundle"
+
+# Google Play's internal testing track, for the testers (scripts/play-upload.js). GitHub is done by now,
+# so a failure here only needs this step retried.
+node scripts/play-upload.js upload $bundle "$code ($Version)" $notesFile.FullName
+if ($LASTEXITCODE) { Write-Warning "Google Play upload failed; retry with: node scripts/play-upload.js upload $bundle `"$code ($Version)`" <notes-file>" }
+Remove-Item $notesFile

@@ -3,12 +3,26 @@
 Everything needed to get Intack onto Play: **internal testing** first (up to 100 testers by email, no
 public listing), then the **closed test** a new personal account needs, then production.
 
-## Where we are (2026-10-17)
+## Where we are (2026-10-21)
 
-- Developer account **rad-corps** (personal, account ID 5270221815478476760) is paid for.
-- Identity documents were submitted on 2026-10-17 and Google is reviewing them ("may take a few days";
-  they email the account owner). The contact phone number check unlocks after that.
-- No app has been created in Play Console yet.
+- Developer account **rad-corps** (personal, account ID 5270221815478476760) is verified (identity and
+  phone).
+- The app `app.intack` exists, as Free. **Play app signing uses our own key** (`~/.twodo/release.jks`,
+  uploaded with PEPK; SHA-256 `15:B6:93:C5…`), so Play and GitHub builds update each other.
+- **Internal testing** is live. Testers join with
+  https://play.google.com/apps/internaltest/4701357413320418794 (only Google accounts on the email list
+  under Internal testing › Testers).
+- **Releases go to Play automatically:** `scripts/release.ps1` ends by running
+  `scripts/play-upload.js`, which uploads the `.aab` to the internal track with the changelog entry as
+  the notes. It signs in as the service account `play-publisher@intack-ca502.iam.gserviceaccount.com`
+  (Google Cloud project intack-ca502, the Firebase one) with its key file in `C:\Users\Adam\secrets`
+  (override with `PLAY_KEY`). In Play Console that account may view the app, release to testing tracks
+  and manage tester lists, nothing more. `node scripts/play-upload.js check` lists the tracks without
+  changing anything.
+- Console layout notes (2026-10): App integrity moved to "Protected with Play"; the signing choice was
+  reached from the first release's "enhancements" box. Users and permissions is under All apps ›
+  Manage account. A permission set needs an "App access" box ticked before Apply works.
+- Next: the closed test (12+ testers, 14 days) and the store listing, below.
 
 ## Checklist
 
