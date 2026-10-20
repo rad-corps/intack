@@ -5,6 +5,8 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+## v0.9.7 — 2026-10-20
+
 **A sound of its own when someone joins.** When someone joins one of your groups or shared lists, the
 notification now plays a short three-note welcome chime instead of the usual ping, so you know who just
 arrived without looking. It has its own "Someone joins" entry in Android's notification settings for Intack.
