@@ -667,6 +667,8 @@ internal fun ListBody(
     var editing by remember { mutableStateOf<Item?>(null) }
     // Open while filling in a new item (its note, photo or section) before adding it.
     var drafting by remember { mutableStateOf(false) }
+    // The heading whose + opened the new item, so it starts in that section.
+    var draftSection by remember { mutableStateOf<Item?>(null) }
 
     fun add() {
         val text = newText
@@ -759,6 +761,12 @@ internal fun ListBody(
                                 val handle = @Composable {
                                     Icon(painterResource(R.drawable.ic_drag_handle), "Move heading", tint = MaterialTheme.colorScheme.outline, modifier = dragHandle.padding(12.dp))
                                 }
+                                // Adds an item straight into this section.
+                                val plus = @Composable {
+                                    if (!locked && riding == null) IconButton(onClick = { draftSection = item; drafting = true }) {
+                                        Icon(Icons.Default.Add, "Add to ${item.text}", tint = MaterialTheme.colorScheme.secondary)
+                                    }
+                                }
                                 val title = @Composable { modifier: Modifier ->
                                     Text(
                                         item.text,
@@ -772,6 +780,7 @@ internal fun ListBody(
                                 if (backing == null || riding != null) {
                                     if (!tickOnLeft) handle()
                                     title(Modifier.weight(1f))
+                                    plus()
                                     if (tickOnLeft) handle()
                                 } else {
                                     // Over a photo the heading and its handle sit on a pill of the page colour,
@@ -781,7 +790,8 @@ internal fun ListBody(
                                         verticalAlignment = Alignment.CenterVertically,
                                     ) {
                                         if (!tickOnLeft) handle()
-                                        title(Modifier.padding(start = if (tickOnLeft) 16.dp else 0.dp, end = if (tickOnLeft) 0.dp else 16.dp))
+                                        title(Modifier.padding(start = if (tickOnLeft) 16.dp else 0.dp, end = if (tickOnLeft) 0.dp else 4.dp))
+                                        plus()
                                         if (tickOnLeft) handle()
                                     }
                                 }
@@ -912,16 +922,16 @@ internal fun ListBody(
         ListItemSheet(
             item = Item(id = "", text = newText, createdAt = 0, version = Version(0, ""), editor = ""),
             headings = list.headings,
-            section = null,
-            onDismiss = { drafting = false },
+            section = draftSection?.let { h -> list.headings.firstOrNull { it.id == h.id } },
+            onDismiss = { drafting = false; draftSection = null },
             onSave = { text, headingId, note, photo ->
                 drafting = false
+                draftSection = null
                 newText = ""
                 scrollToNew = true
                 app.save {
-                    val id = app.repo.addItem(list.id, text, note = note) ?: return@save
+                    val id = app.repo.addItem(list.id, text, note = note, section = headingId) ?: return@save
                     if (photo is PhotoChoice.Own) app.repo.setImage(list.id, id, photo.jpeg)
-                    if (headingId != null) app.repo.moveToSection(list.id, id, headingId)
                 }
             },
             adding = true,

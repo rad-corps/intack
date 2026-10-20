@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -34,6 +35,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,10 +44,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import app.intack.model.AuditEntry
@@ -102,6 +107,8 @@ internal fun ListItemSheet(
         else -> image
     }
     val hasPhoto = photo is PhotoChoice.Own || (photo == PhotoChoice.Keep && item.image != null)
+    // A new item: straight to typing it.
+    val focus = remember { FocusRequester() }
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheet) {
         Column(Modifier.fillMaxWidth().imePadding().verticalScroll(rememberScrollState()).padding(start = 20.dp, end = 20.dp, bottom = 24.dp)) {
@@ -112,11 +119,14 @@ internal fun ListItemSheet(
                 onValueChange = { text = it },
                 label = { Text(if (item.heading) "Heading" else "Item") },
                 textStyle = MaterialTheme.typography.titleMedium,
-                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+                // Adding: the keyboard's Done adds it, as in the add bar.
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = if (adding) ImeAction.Done else ImeAction.Default),
+                keyboardActions = KeyboardActions(onDone = { if (text.isNotBlank()) onSave(text, headingId, note, photo) }),
                 shape = RoundedCornerShape(12.dp),
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().focusRequester(focus),
             )
+            if (adding) LaunchedEffect(Unit) { focus.requestFocus() }
             if (!item.heading) {
                 Spacer(Modifier.height(12.dp))
                 OutlinedTextField(

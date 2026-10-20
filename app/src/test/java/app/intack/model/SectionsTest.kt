@@ -70,6 +70,14 @@ class SectionsTest {
     }
 
     @Test
+    fun aNewItemAddedUnderAHeadingGoesAtTheEndOfItsSection() {
+        // Added from a heading's +: not yet in the list.
+        val (section, pos) = itemToSection(ordered, "eggs", "fruit")
+        val eggs = item("eggs", pos, section)
+        assertEquals(listOf("fruit", "apples", "eggs", "bakery"), ids(list.with(eggs).visibleItems).takeLast(4))
+    }
+
+    @Test
     fun newItemsGoAtTheEndOfTheUnsortedOnes() {
         assertEquals(2.0, newItemPosition(ordered), 0.0)
         assertEquals(4.0, newHeadingPosition(ordered), 0.0)

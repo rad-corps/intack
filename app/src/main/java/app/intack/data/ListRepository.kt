@@ -483,22 +483,25 @@ class ListRepository(private val dir: File, private val identity: Identity) {
 
     /**
      * Adds an item (or, with [heading], a section heading) at the bottom of the list, with its [note] if
-     * it has one. Returns its id.
+     * it has one. With [section] (a heading's id), the item goes at the end of that section instead. Returns its id.
      */
-    suspend fun addItem(listId: String, text: String, heading: Boolean = false, note: String = ""): String? {
+    suspend fun addItem(listId: String, text: String, heading: Boolean = false, note: String = "", section: String? = null): String? {
         val trimmed = text.trim().ifEmpty { return null }
         val id = UUID.randomUUID().toString()
         putLocal(listId) { list ->
             val now = System.currentTimeMillis()
+            val into = section?.takeIf { !heading && list.items[it]?.let { h -> h.heading && !h.deleted } == true }
+                ?.let { itemToSection(list.visibleItems, id, it) }
             Item(
                 id = id,
                 text = trimmed,
                 createdAt = now,
                 version = Version(now, identity.deviceId),
                 editor = identity.deviceName,
-                pos = if (heading) newHeadingPosition(list.visibleItems) else newItemPosition(list.visibleItems),
+                pos = into?.second ?: if (heading) newHeadingPosition(list.visibleItems) else newItemPosition(list.visibleItems),
                 posVersion = Version(now, identity.deviceId),
                 heading = heading,
+                section = into?.first,
             ).let { if (note.isBlank()) it else it.withNote(note, identity.deviceId, now) }
         }
         return id
