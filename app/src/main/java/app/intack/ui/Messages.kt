@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -60,6 +61,7 @@ internal fun MessagesTab(app: IntackApp, group: TodoList, lists: Map<String, Tod
     val messages = group.messages(lists)
     val chatIds = group.chatRefs.mapNotNull { it.spaceId }.filter { it in lists }
     var text by rememberSaveable(group.id) { mutableStateOf("") }
+    val listState = rememberLazyListState()
 
     // On screen, so they're read: clear the badge and any notification for them.
     LaunchedEffect(chatIds, messages.lastOrNull()?.id) {
@@ -67,6 +69,14 @@ internal fun MessagesTab(app: IntackApp, group: TodoList, lists: Map<String, Tod
             app.repo.markRead(it)
             Notifications.clearChanges(context, it)
         }
+    }
+
+    // A new message at the bottom: bring it into view if it's mine, or if we were already at the bottom
+    // (the list holds its place by key, so otherwise it would land just below the screen). Not when
+    // reading further up, so an incoming message doesn't yank the view away.
+    val newest = messages.lastOrNull()
+    LaunchedEffect(newest?.id) {
+        if (newest != null && (newest.version.by == me || listState.firstVisibleItemIndex <= 1)) listState.animateScrollToItem(0)
     }
 
     Column(modifier.fillMaxWidth()) {
@@ -77,6 +87,7 @@ internal fun MessagesTab(app: IntackApp, group: TodoList, lists: Map<String, Tod
             val newestFirst = messages.asReversed()
             LazyColumn(
                 Modifier.weight(1f).fillMaxWidth(),
+                state = listState,
                 reverseLayout = true,
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.Bottom),
