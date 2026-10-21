@@ -5,6 +5,10 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+**Not just for families.** The welcome screen, the empty calendar and the invite page no longer assume
+your group is a family: it's "A noticeboard for your people", **Start a board**, and **Invite group
+members**. You can still call your group Family.
+
 ## v0.9.12 — 2026-10-22
 
 **Clearer button on an empty calendar.** The "Add a plan" button on a calendar with nothing on it now

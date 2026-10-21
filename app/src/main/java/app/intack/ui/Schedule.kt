@@ -107,7 +107,7 @@ internal fun ScheduleView(
     sources: List<ScheduleSource>,
     modifier: Modifier = Modifier,
     onDay: ((LocalDate) -> Unit)? = null,
-    /** Set while nobody else has joined: the empty calendar then suggests inviting the family first. */
+    /** Set while nobody else has joined: the empty calendar then suggests inviting the group first. */
     onInvite: (() -> Unit)? = null,
 ) {
     val scope = rememberCoroutineScope()
@@ -308,7 +308,7 @@ private fun EmptyCalendar(onInvite: (() -> Unit)?, onAdd: () -> Unit) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Nothing on yet", style = MaterialTheme.typography.headlineSmall.copy(fontFamily = Brand.Serif, fontSize = 24.sp))
             Text(
-                if (onInvite != null) "Calendars are better shared. Invite your family, then add the first entry together."
+                if (onInvite != null) "Calendars are better shared. Invite your group members, then add the first entry together."
                 else "Add the first calendar entry for everyone to see.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -317,7 +317,7 @@ private fun EmptyCalendar(onInvite: (() -> Unit)?, onAdd: () -> Unit) {
         }
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (onInvite != null) {
-                BrandButton("Invite family", onClick = onInvite)
+                BrandButton("Invite group members", onClick = onInvite)
                 BrandTextButton("Calendar entry +", onClick = onAdd)
             } else {
                 BrandButton("Calendar entry +", onClick = onAdd)

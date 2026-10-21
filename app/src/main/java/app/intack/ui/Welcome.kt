@@ -42,7 +42,7 @@ import androidx.compose.ui.unit.sp
 import app.intack.IntackApp
 
 /**
- * First run (design canvas "Welcome screen"): what Intack is, then start a board for your family or join
+ * First run (design canvas "Welcome screen"): what Intack is, then start a board for your group or join
  * one you've been invited to. Your name is asked only after choosing. No account, nothing to sign up for.
  */
 @Composable
@@ -70,7 +70,7 @@ internal fun WelcomeScreen(app: IntackApp, onStart: (groupName: String) -> Unit,
         when (step) {
             Step.HELLO -> Hello(onStart = { step = Step.START }, onInvite = { step = Step.JOIN })
             Step.START -> Details(
-                title = "Start your family board",
+                title = "Start your group's board",
                 name = name, nameMissing = nameMissing, onName = { name = it; nameMissing = false },
                 groupName = groupName, onGroupName = { groupName = it },
                 action = "Start the board",
@@ -107,7 +107,7 @@ private fun ColumnScope.Hello(onStart: () -> Unit, onInvite: () -> Unit) {
         PinnedNotes()
         Spacer(Modifier.height(28.dp))
         Text(
-            "A noticeboard for your family",
+            "A noticeboard for your people",
             style = MaterialTheme.typography.headlineMedium.copy(fontFamily = Brand.Serif, fontSize = 32.sp, lineHeight = 37.sp),
             textAlign = TextAlign.Center,
         )
@@ -120,7 +120,7 @@ private fun ColumnScope.Hello(onStart: () -> Unit, onInvite: () -> Unit) {
         )
     }
     Spacer(Modifier.height(20.dp))
-    BrandButton("Start a family board", onClick = onStart)
+    BrandButton("Start a board", onClick = onStart)
     Spacer(Modifier.height(10.dp))
     BrandButton("I have an invite", outlined = true, onClick = onInvite)
     Spacer(Modifier.height(16.dp))
@@ -170,7 +170,7 @@ private fun ColumnScope.Details(
     BrandButton(action, onClick = onDone)
     Spacer(Modifier.height(16.dp))
     Text(
-        "Your plans stay on your family's phones. Only the people you invite can see them.",
+        "Your plans stay on your group's phones. Only the people you invite can see them.",
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         textAlign = TextAlign.Center,
