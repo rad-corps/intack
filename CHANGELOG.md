@@ -5,6 +5,10 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+**Your message stays in view.** When you send a message, the conversation now scrolls down to show it,
+instead of leaving it just below the screen. New messages from others scroll into view too, as long as
+you were already at the bottom; if you have scrolled up to read older ones, you stay where you are.
+
 ## v0.9.10 — 2026-10-21
 
 **Know when someone joins, even with the app closed.** When someone joins your group or a list you
