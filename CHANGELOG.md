@@ -5,6 +5,9 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+**Copy from messages.** Press and hold on a message to select some or all of its words, then tap
+**Copy**. Links still open with a normal tap.
+
 ## v0.9.14 — 2026-10-22
 
 **Links in messages open.** Web addresses in Messages (like https://... or www....) are now underlined;

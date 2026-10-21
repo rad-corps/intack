@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.Icon
@@ -175,11 +176,14 @@ private fun MessageBubble(message: Item, mine: Boolean, showName: Boolean, name:
                 .padding(horizontal = 12.dp, vertical = 8.dp),
         ) {
             if (showName) Text(name, style = MaterialTheme.typography.labelLarge, color = personColor(message.version.by))
-            Text(
-                remember(message.text) { withLinks(message.text) },
-                style = MaterialTheme.typography.bodyLarge,
-                color = if (mine) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
-            )
+            // Long-press to select some or all of it, then Copy.
+            SelectionContainer {
+                Text(
+                    remember(message.text) { withLinks(message.text) },
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = if (mine) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
+                )
+            }
             Text(
                 time,
                 Modifier.align(Alignment.End),
