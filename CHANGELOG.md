@@ -5,6 +5,8 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+## v0.9.12 — 2026-10-22
+
 **Clearer button on an empty calendar.** The "Add a plan" button on a calendar with nothing on it now
 reads **Calendar entry +**, so it's plain that it adds an entry to the calendar.
 
