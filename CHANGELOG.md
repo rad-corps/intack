@@ -5,6 +5,8 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+## v0.9.10 — 2026-10-21
+
 **Know when someone joins, even with the app closed.** When someone joins your group or a list you
 shared, their phone now leaves a note for everyone and wakes their phones, so you get the "Sam joined"
 notification (with its chime) within moments, and they're in your member list, even if nobody else had
