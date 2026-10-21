@@ -12,6 +12,8 @@ GROUP=${GROUP:-Family}
 EVERY=${EVERY:-60}
 SDK="$LOCALAPPDATA/Android/Sdk"
 export PATH="$SDK/platform-tools:$PATH"
+# bigbox; other emulators (e.g. Roastbot on emulator-5558) may be running too, and plain adb refuses to pick.
+export ANDROID_SERIAL=${ANDROID_SERIAL:-emulator-5554}
 # A Unix-style path: xargs and friends treat the backslashes in $LOCALAPPDATA as escapes.
 STATE=$(cygpath -u "${STATE:-"$LOCALAPPDATA/intack-dispatcher"}")
 mkdir -p "$STATE/items" "$STATE/runs"
