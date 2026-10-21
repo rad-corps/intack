@@ -48,6 +48,12 @@ $props = $props -replace '^intack.versionName=.*', "intack.versionName=$Version"
                 -replace '^intack.versionCode=.*', "intack.versionCode=$code"
 Set-Content gradle.properties $props
 
+# From here on, failures are caught by checking exit codes. Under 'Stop', Windows PowerShell treats any
+# stderr line from git or gradle as fatal when the output is redirected (e.g. a CRLF warning), which
+# left releases half done.
+$ErrorActionPreference = 'Continue'
+$PSDefaultParameterValues['*:ErrorAction'] = 'Stop'  # but cmdlets (Copy-Item etc.) still stop on failure
+
 ./gradlew testDebugUnitTest assembleRelease bundleRelease
 if ($LASTEXITCODE) {
     git checkout -- gradle.properties CHANGELOG.md
@@ -63,7 +69,9 @@ Copy-Item app/build/outputs/mapping/release/mapping.txt "$HOME/.twodo/mappings/v
 Copy-Item app/build/outputs/bundle/release/app-release.aab $bundle -Force
 
 git commit -q -am "Release v$Version"
+if ($LASTEXITCODE) { throw 'Committing the release failed; the build is done, so commit, tag and push by hand.' }
 git tag -a "v$Version" -m "Intack v$Version"
+if ($LASTEXITCODE) { throw 'Tagging the release failed.' }
 git push origin main "v$Version"
 if ($LASTEXITCODE) { throw 'Push failed; the release commit and tag are local only.' }
 
