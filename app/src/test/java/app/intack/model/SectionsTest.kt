@@ -70,11 +70,23 @@ class SectionsTest {
     }
 
     @Test
-    fun aNewItemAddedUnderAHeadingGoesAtTheEndOfItsSection() {
+    fun aNewItemAddedUnderAHeadingGoesAtTheTopOfItsSection() {
         // Added from a heading's +: not yet in the list.
-        val (section, pos) = itemToSection(ordered, "eggs", "fruit")
-        val eggs = item("eggs", pos, section)
-        assertEquals(listOf("fruit", "apples", "eggs", "bakery"), ids(list.with(eggs).visibleItems).takeLast(4))
+        val eggs = item("eggs", newItemInSection(ordered, "dairy"), "dairy")
+        assertEquals(listOf("dairy", "eggs", "milk", "cheese"), ids(list.with(eggs).visibleItems).subList(1, 5))
+        val pie = item("pie", newItemInSection(ordered, "bakery"), "bakery")
+        assertEquals(listOf("bakery", "pie"), ids(list.with(pie).visibleItems).takeLast(2))
+    }
+
+    @Test
+    fun eachSectionIsOnePaneFromItsHeadingToItsLastItem() {
+        val spots = paneSpots(ordered)
+        assertNull(spots["bread"])
+        assertEquals(PaneSpot("dairy", first = true, last = false), spots["dairy"])
+        assertEquals(PaneSpot("dairy", first = false, last = false), spots["milk"])
+        assertEquals(PaneSpot("dairy", first = false, last = true), spots["cheese"])
+        // An empty section is a pane of just its heading.
+        assertEquals(PaneSpot("bakery", first = true, last = true), spots["bakery"])
     }
 
     @Test

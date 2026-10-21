@@ -34,6 +34,7 @@ import app.intack.model.edited
 import app.intack.model.headingMove
 import app.intack.model.itemMove
 import app.intack.model.itemToSection
+import app.intack.model.newItemInSection
 import app.intack.model.merge
 import app.intack.model.mergeAudit
 import app.intack.model.moved
@@ -483,7 +484,7 @@ class ListRepository(private val dir: File, private val identity: Identity) {
 
     /**
      * Adds an item (or, with [heading], a section heading) at the bottom of the list, with its [note] if
-     * it has one. With [section] (a heading's id), the item goes at the end of that section instead. Returns its id.
+     * it has one. With [section] (a heading's id), the item goes at the top of that section instead. Returns its id.
      */
     suspend fun addItem(listId: String, text: String, heading: Boolean = false, note: String = "", section: String? = null): String? {
         val trimmed = text.trim().ifEmpty { return null }
@@ -491,7 +492,7 @@ class ListRepository(private val dir: File, private val identity: Identity) {
         putLocal(listId) { list ->
             val now = System.currentTimeMillis()
             val into = section?.takeIf { !heading && list.items[it]?.let { h -> h.heading && !h.deleted } == true }
-                ?.let { itemToSection(list.visibleItems, id, it) }
+                ?.let { it to newItemInSection(list.visibleItems, it) }
             Item(
                 id = id,
                 text = trimmed,

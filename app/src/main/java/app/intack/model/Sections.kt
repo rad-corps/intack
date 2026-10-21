@@ -138,3 +138,22 @@ fun headingMove(ordered: List<Item>, headingId: String, dropIndex: Int): Double?
     val after = rest.getOrNull(index)?.position
     return between(before, after, heading.position)
 }
+
+/** A new item added to [headingId]'s section goes at its top, above the items already there. */
+fun newItemInSection(ordered: List<Item>, headingId: String): Double =
+    (ordered.filter { !it.heading && sectionOf(ordered, it.id)?.id == headingId }.minOfOrNull { it.position } ?: 2.0) - 1
+
+/** Where a row sits in its section's pane on screen: which section, and whether it starts or ends it. */
+data class PaneSpot(val section: String, val first: Boolean, val last: Boolean)
+
+/** The pane spot of each row of [ordered] that's in a section (a heading or its items; unsorted items have none). */
+fun paneSpots(ordered: List<Item>): Map<String, PaneSpot> {
+    val spots = HashMap<String, PaneSpot>()
+    var section: String? = null
+    ordered.forEachIndexed { i, item ->
+        if (item.heading) section = item.id
+        val s = section ?: return@forEachIndexed
+        spots[item.id] = PaneSpot(s, first = item.heading, last = ordered.getOrNull(i + 1)?.heading != false)
+    }
+    return spots
+}

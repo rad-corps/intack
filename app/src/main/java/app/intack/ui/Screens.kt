@@ -153,6 +153,7 @@ import app.intack.model.headings
 import app.intack.model.isJoining
 import app.intack.model.sectionItems
 import app.intack.model.sectionOf
+import app.intack.model.paneSpots
 import app.intack.sync.ListEvent
 import app.intack.sync.Notifications
 import app.intack.sync.SyncStatus
@@ -702,149 +703,151 @@ internal fun ListBody(
             if (scrollToNew && newest != null) listState.animateScrollToItem(newest)
             scrollToNew = false
         }
+        // Each section sits on a pane of its own, from its heading to its last item, so it's clear which
+        // items are under which heading. It follows the order on screen, so it reshapes as things are dragged.
+        val spots = remember(ordered) { paneSpots(ordered) }
+        // Over a photo the pane is the page colour, or headings get lost in the picture.
+        val paneColor = LocalPhotoBacking.current?.copy(alpha = 0.8f) ?: MaterialTheme.colorScheme.surfaceContainer
         LazyColumn(Modifier.weight(1f), state = listState, contentPadding = PaddingValues(bottom = 8.dp)) {
             items(ordered, key = { it.id }) { item ->
                 ReorderableItem(reorderState, key = item.id) {
                     val rowStyle = LocalListStyle.current
                     val background by animateColorAsState(
-                        when {
-                            item.id == target -> MaterialTheme.colorScheme.tertiaryContainer
-                            item.id in highlighted -> MaterialTheme.colorScheme.primaryContainer
-                            else -> Color.Transparent
-                        },
-                        animationSpec = tween(if (dragging != null) 150 else 600),
+                        if (item.id in highlighted) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+                        animationSpec = tween(600),
                         label = "highlight",
                     )
-                    val dragHandle = if (item.heading) {
-                        // A heading takes its items with it: they come out of the list and ride along under it.
-                        Modifier.draggableHandle(
-                            enabled = !locked,
-                            onDragStarted = {
-                                val items = sectionItems(ordered, item.id).drop(1)
-                                carried = item.id to items
-                                ordered = ordered.filter { it !in items }
-                            },
-                            onDragStopped = {
-                                val index = ordered.indexOfFirst { it.id == item.id }
-                                // Show the result straight away (the same as the saved move will give), whether
-                                // or not anything actually moved.
-                                ordered = afterHeadingMove(current.visibleItems, item.id, index)
-                                carried = null
-                                scope.launch { app.repo.moveSection(current.id, item.id, index) }
-                            },
-                        )
-                    } else {
-                        Modifier.draggableHandle(
-                            enabled = !locked,
-                            onDragStarted = { dragging = item.id },
-                            onDragStopped = {
-                                dragging = null
-                                val index = ordered.indexOfFirst { it.id == item.id }
-                                val drop = if (current.hideHeadings) indexAmongAll(current.visibleItems, ordered, item.id, index) else index
-                                scope.launch { app.repo.moveItem(current.id, item.id, drop) }
-                            },
-                        )
+                    val spot = spots[item.id]
+                    // The section an item is being dragged into lights up.
+                    val fill by animateColorAsState(
+                        if (spot != null && spot.section == target) MaterialTheme.colorScheme.tertiaryContainer else paneColor,
+                        animationSpec = tween(150),
+                        label = "pane",
+                    )
+                    val pane = if (spot == null) Modifier else {
+                        val top = if (spot.first) 16.dp else 0.dp
+                        val bottom = if (spot.last) 16.dp else 0.dp
+                        Modifier.padding(top = if (spot.first) 12.dp else 0.dp, bottom = if (spot.last) 4.dp else 0.dp)
+                            .padding(horizontal = 8.dp)
+                            .background(fill, RoundedCornerShape(top, top, bottom, bottom))
+                            .padding(bottom = if (spot.last) 4.dp else 0.dp)
                     }
-                    if (item.heading) {
-                        val riding = carried?.takeIf { it.first == item.id }?.second
-                        Column(
-                            if (riding == null) Modifier
-                            else Modifier.shadow(6.dp, RoundedCornerShape(12.dp)).clip(RoundedCornerShape(12.dp))
-                                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
-                        ) {
-                            // A section heading: bold, no checkbox; tap to rename or delete. Its handle lines up with the items'.
-                            Row(
-                                Modifier.fillMaxWidth().background(if (riding == null) background else Color.Transparent).clickable(enabled = !locked) { editing = item }
-                                    .padding(start = if (tickOnLeft) 20.dp else 4.dp, end = if (tickOnLeft) 4.dp else 20.dp, top = 12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
+                    Box(pane) {
+                        val dragHandle = if (item.heading) {
+                            // A heading takes its items with it: they come out of the list and ride along under it.
+                            Modifier.draggableHandle(
+                                enabled = !locked,
+                                onDragStarted = {
+                                    val items = sectionItems(ordered, item.id).drop(1)
+                                    carried = item.id to items
+                                    ordered = ordered.filter { it !in items }
+                                },
+                                onDragStopped = {
+                                    val index = ordered.indexOfFirst { it.id == item.id }
+                                    // Show the result straight away (the same as the saved move will give), whether
+                                    // or not anything actually moved.
+                                    ordered = afterHeadingMove(current.visibleItems, item.id, index)
+                                    carried = null
+                                    scope.launch { app.repo.moveSection(current.id, item.id, index) }
+                                },
+                            )
+                        } else {
+                            Modifier.draggableHandle(
+                                enabled = !locked,
+                                onDragStarted = { dragging = item.id },
+                                onDragStopped = {
+                                    dragging = null
+                                    val index = ordered.indexOfFirst { it.id == item.id }
+                                    val drop = if (current.hideHeadings) indexAmongAll(current.visibleItems, ordered, item.id, index) else index
+                                    scope.launch { app.repo.moveItem(current.id, item.id, drop) }
+                                },
+                            )
+                        }
+                        if (item.heading) {
+                            val riding = carried?.takeIf { it.first == item.id }?.second
+                            Column(
+                                if (riding == null) Modifier
+                                else Modifier.shadow(6.dp, RoundedCornerShape(12.dp)).clip(RoundedCornerShape(12.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceContainerHigh),
                             ) {
-                                val handle = @Composable {
-                                    Icon(painterResource(R.drawable.ic_drag_handle), "Move heading", tint = MaterialTheme.colorScheme.outline, modifier = dragHandle.padding(12.dp))
-                                }
-                                // Adds an item straight into this section.
-                                val plus = @Composable {
-                                    if (!locked && riding == null) IconButton(onClick = { draftSection = item; drafting = true }) {
-                                        Icon(Icons.Default.Add, "Add to ${item.text}", tint = MaterialTheme.colorScheme.secondary)
+                                // A section heading: bold, no checkbox; tap to rename or delete. Its handle lines up with the items'.
+                                Row(
+                                    Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp, 16.dp, 0.dp, 0.dp))
+                                        .background(if (riding == null) background else Color.Transparent).clickable(enabled = !locked) { editing = item }
+                                        .padding(start = if (tickOnLeft) 20.dp else 4.dp, end = if (tickOnLeft) 4.dp else 20.dp, top = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    val handle = @Composable {
+                                        Icon(painterResource(R.drawable.ic_drag_handle), "Move heading", tint = MaterialTheme.colorScheme.outline, modifier = dragHandle.padding(12.dp))
                                     }
-                                }
-                                val title = @Composable { modifier: Modifier ->
-                                    Text(
-                                        item.text,
-                                        modifier.padding(vertical = 8.dp),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = MaterialTheme.colorScheme.secondary,
-                                    )
-                                }
-                                val backing = LocalPhotoBacking.current
-                                if (backing == null || riding != null) {
+                                    // Adds an item straight into this section.
+                                    val plus = @Composable {
+                                        if (!locked && riding == null) IconButton(onClick = { draftSection = item; drafting = true }) {
+                                            Icon(Icons.Default.Add, "Add to ${item.text}", tint = MaterialTheme.colorScheme.secondary)
+                                        }
+                                    }
+                                    val title = @Composable { modifier: Modifier ->
+                                        Text(
+                                            item.text,
+                                            modifier.padding(vertical = 8.dp),
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = MaterialTheme.colorScheme.secondary,
+                                        )
+                                    }
                                     if (!tickOnLeft) handle()
                                     title(Modifier.weight(1f))
                                     plus()
                                     if (tickOnLeft) handle()
-                                } else {
-                                    // Over a photo the heading and its handle sit on a pill of the page colour,
-                                    // or they get lost in the picture.
-                                    Row(
-                                        Modifier.padding(horizontal = 8.dp).clip(CircleShape).background(backing.copy(alpha = 0.8f)),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                    ) {
-                                        if (!tickOnLeft) handle()
-                                        title(Modifier.padding(start = if (tickOnLeft) 16.dp else 0.dp, end = if (tickOnLeft) 0.dp else 4.dp))
-                                        plus()
-                                        if (tickOnLeft) handle()
-                                    }
+                                }
+                                riding?.forEach { CarriedItem(it, tickOnLeft) }
+                            }
+                        } else StyledRow(fill = background, contentPadding = if (tickOnLeft) PaddingValues(start = 8.dp, end = 4.dp) else PaddingValues(start = 4.dp, end = 8.dp)) {
+                            // The checkbox ticks (on the thumb's side); the words open the item to change or delete it.
+                            val checkbox = @Composable {
+                                Checkbox(
+                                    checked = item.checked,
+                                    // Ticking still works when locked: that's what the list is for in the shop.
+                                    onCheckedChange = { scope.launch { app.repo.setChecked(list.id, item.id, it) } },
+                                    colors = CheckboxDefaults.colors(
+                                        // Ticked in the colour of whoever ticked it.
+                                        checkedColor = personColor(item.version.by),
+                                        uncheckedColor = MaterialTheme.colorScheme.outline,
+                                    ),
+                                )
+                            }
+                            val handle = @Composable {
+                                Icon(painterResource(R.drawable.ic_drag_handle), "Reorder", tint = MaterialTheme.colorScheme.outline, modifier = dragHandle.padding(12.dp))
+                            }
+                            if (tickOnLeft) checkbox() else handle()
+                            Column(Modifier.weight(1f).clip(RoundedCornerShape(8.dp)).clickable(enabled = !locked) { editing = item }.padding(vertical = rowStyle.spacing, horizontal = 4.dp)) {
+                                Text(
+                                    item.text,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    textDecoration = if (item.checked) TextDecoration.LineThrough else null,
+                                    color = if (item.checked) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.onSurface,
+                                )
+                                // The start of its note; tap the item to read or change all of it.
+                                item.note?.let { note ->
+                                    Text(
+                                        note,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                }
+                                if (item.checked) {
+                                    Text(
+                                        tickedBy(item, app.identity.deviceId, names),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = personColor(item.version.by),
+                                    )
                                 }
                             }
-                            riding?.forEach { CarriedItem(it, tickOnLeft) }
+                            if (item.image != null) ItemThumbnail(app, current, item)
+                            if (tickOnLeft) handle() else checkbox()
                         }
-                        return@ReorderableItem
-                    }
-                    StyledRow(fill = background, contentPadding = if (tickOnLeft) PaddingValues(start = 8.dp, end = 4.dp) else PaddingValues(start = 4.dp, end = 8.dp)) {
-                        // The checkbox ticks (on the thumb's side); the words open the item to change or delete it.
-                        val checkbox = @Composable {
-                            Checkbox(
-                                checked = item.checked,
-                                // Ticking still works when locked: that's what the list is for in the shop.
-                                onCheckedChange = { scope.launch { app.repo.setChecked(list.id, item.id, it) } },
-                                colors = CheckboxDefaults.colors(
-                                    // Ticked in the colour of whoever ticked it.
-                                    checkedColor = personColor(item.version.by),
-                                    uncheckedColor = MaterialTheme.colorScheme.outline,
-                                ),
-                            )
-                        }
-                        val handle = @Composable {
-                            Icon(painterResource(R.drawable.ic_drag_handle), "Reorder", tint = MaterialTheme.colorScheme.outline, modifier = dragHandle.padding(12.dp))
-                        }
-                        if (tickOnLeft) checkbox() else handle()
-                        Column(Modifier.weight(1f).clip(RoundedCornerShape(8.dp)).clickable(enabled = !locked) { editing = item }.padding(vertical = rowStyle.spacing, horizontal = 4.dp)) {
-                            Text(
-                                item.text,
-                                style = MaterialTheme.typography.bodyLarge,
-                                textDecoration = if (item.checked) TextDecoration.LineThrough else null,
-                                color = if (item.checked) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.onSurface,
-                            )
-                            // The start of its note; tap the item to read or change all of it.
-                            item.note?.let { note ->
-                                Text(
-                                    note,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    maxLines = 2,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                            }
-                            if (item.checked) {
-                                Text(
-                                    tickedBy(item, app.identity.deviceId, names),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = personColor(item.version.by),
-                                )
-                            }
-                        }
-                        if (item.image != null) ItemThumbnail(app, current, item)
-                        if (tickOnLeft) handle() else checkbox()
                     }
                 }
             }

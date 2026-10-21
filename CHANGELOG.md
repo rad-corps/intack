@@ -5,6 +5,11 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+**Each section in its own panel.** In a list with headings, each heading and its items now sit together on
+a panel of their own, so it's easy to see which items belong to which heading. While you drag an item, the
+panel it would land in lights up. And the **+** beside a heading now adds the new item at the top of that
+section, where you'll see it, rather than at the bottom.
+
 ## v0.9.8 — 2026-10-21
 
 **Add straight into a section.** Each heading in a list now has a **+** beside it. Tap it to add an item
