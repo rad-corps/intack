@@ -5,6 +5,11 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+**One-handed lists.** Shopping with one hand full? Open a list, tap the **⋮** menu and choose
+**One-handed**: the list moves down into the bottom half of the screen, where your thumb can reach
+every item. Each list remembers it on your phone. Tap **use the full screen** (or the menu again) to
+go back.
+
 ## v0.9.15 — 2026-10-22
 
 **Copy from messages.** Press and hold on a message to select some or all of its words, then tap

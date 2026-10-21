@@ -1,4 +1,4 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 
 package app.intack.ui
 
@@ -36,6 +36,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -606,6 +608,12 @@ internal fun ListScreen(app: IntackApp, list: TodoList, status: SyncStatus, snac
     // For shopping: the screen stays on (remembered per list), and a lock stops bumps changing things.
     var awake by remember(list.id) { mutableStateOf(list.id in app.identity.awakeLists) }
     var locked by rememberSaveable(list.id) { mutableStateOf(false) }
+    // One-handed: the list keeps to the bottom half of the screen, within thumb reach (remembered per list).
+    var oneHanded by remember(list.id) { mutableStateOf(list.id in app.identity.oneHandedLists) }
+    fun setOneHanded(on: Boolean) {
+        oneHanded = on
+        app.setOneHanded(list.id, on)
+    }
     val view = LocalView.current
     DisposableEffect(view, awake) {
         view.keepScreenOn = awake
@@ -613,7 +621,15 @@ internal fun ListScreen(app: IntackApp, list: TodoList, status: SyncStatus, snac
     }
     Scaffold(
         topBar = {
-            SpaceTopBar(app, list, status, onBack, onHistory = { showHistory = true }) {
+            SpaceTopBar(
+                app, list, status, onBack, onHistory = { showHistory = true },
+                extraMenu = { close ->
+                    DropdownMenuItem(
+                        text = { Text(if (oneHanded) "Use the full screen" else "One-handed") },
+                        onClick = { close(); setOneHanded(!oneHanded) },
+                    )
+                },
+            ) {
                 IconButton(onClick = {
                     awake = !awake
                     app.setKeepAwake(list.id, awake)
@@ -634,7 +650,8 @@ internal fun ListScreen(app: IntackApp, list: TodoList, status: SyncStatus, snac
         },
         snackbarHost = { SnackbarHost(snackbar) },
     ) { padding ->
-        ListBody(app, list, status, onBack, Modifier.padding(padding).consumeWindowInsets(padding), locked = locked, onUnlock = { locked = false })
+        ListBody(app, list, status, onBack, Modifier.padding(padding).consumeWindowInsets(padding), locked = locked, onUnlock = { locked = false },
+            oneHanded = oneHanded, onFullScreen = { setOneHanded(false) })
     }
 }
 
@@ -648,6 +665,8 @@ internal fun ListBody(
     modifier: Modifier = Modifier,
     locked: Boolean = false,
     onUnlock: () -> Unit = {},
+    oneHanded: Boolean = false,
+    onFullScreen: () -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
     val tickOnLeft by app.tickOnLeft.collectAsStateWithLifecycle()
@@ -708,6 +727,14 @@ internal fun ListBody(
         val spots = remember(ordered) { paneSpots(ordered) }
         // Over a photo the pane is the page colour, or headings get lost in the picture.
         val paneColor = LocalPhotoBacking.current?.copy(alpha = 0.8f) ?: MaterialTheme.colorScheme.surfaceContainer
+        // One-handed, the top half is left empty, except while typing, when the keyboard takes the bottom.
+        if (oneHanded && !WindowInsets.isImeVisible) {
+            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.BottomCenter) {
+                TextButton(onClick = onFullScreen) {
+                    Text("One-handed · use the full screen", color = MaterialTheme.colorScheme.outline)
+                }
+            }
+        }
         LazyColumn(Modifier.weight(1f), state = listState, contentPadding = PaddingValues(bottom = 8.dp)) {
             items(ordered, key = { it.id }) { item ->
                 ReorderableItem(reorderState, key = item.id) {
@@ -951,6 +978,8 @@ internal fun SpaceTopBar(
     status: SyncStatus,
     onBack: () -> Unit,
     onHistory: () -> Unit,
+    /** Extra entries at the top of the menu; each is given a way to close it. */
+    extraMenu: @Composable (close: () -> Unit) -> Unit = {},
     /** Buttons before the menu, e.g. a list's keep-awake and lock. */
     extraActions: @Composable () -> Unit = {},
 ) {
@@ -993,6 +1022,7 @@ internal fun SpaceTopBar(
             extraActions()
             IconButton(onClick = { menu = true }) { Icon(Icons.Default.MoreVert, "More") }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                extraMenu { menu = false }
                 if (list.kind == SpaceKind.LIST) {
                     DropdownMenuItem(text = { Text("Add a heading") }, onClick = { menu = false; addingHeading = true })
                     if (list.headings.isNotEmpty()) {

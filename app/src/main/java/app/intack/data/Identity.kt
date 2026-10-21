@@ -94,6 +94,11 @@ class Identity(context: Context) {
         get() = prefs.getStringSet("awakeLists", null).orEmpty().toSet()
         set(value) = prefs.edit { putStringSet("awakeLists", value) }
 
+    /** Lists shown one-handed: only in the bottom half of the screen (say, for shopping with the other hand full). */
+    var oneHandedLists: Set<String>
+        get() = prefs.getStringSet("oneHandedLists", null).orEmpty().toSet()
+        set(value) = prefs.edit { putStringSet("oneHandedLists", value) }
+
     /** The group (or [OTHER_LISTS]) shown last, to open on it next time. */
     var lastView: String?
         get() = prefs.getString("lastView", null)

@@ -161,6 +161,10 @@ class IntackApp : Application() {
         identity.awakeLists = if (awake) identity.awakeLists + listId else identity.awakeLists - listId
     }
 
+    fun setOneHanded(listId: String, on: Boolean) {
+        identity.oneHandedLists = if (on) identity.oneHandedLists + listId else identity.oneHandedLists - listId
+    }
+
     fun setDiagnostics(enabled: Boolean) {
         identity.diagnostics = enabled
         Diagnostics.setEnabled(enabled)
