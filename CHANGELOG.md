@@ -5,6 +5,8 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+## v0.9.9 — 2026-10-21
+
 **Each section in its own panel.** In a list with headings, each heading and its items now sit together on
 a panel of their own, so it's easy to see which items belong to which heading. While you drag an item, the
 panel it would land in lights up. And the **+** beside a heading now adds the new item at the top of that
