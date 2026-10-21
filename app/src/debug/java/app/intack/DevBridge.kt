@@ -81,6 +81,8 @@ class DevBridge : BroadcastReceiver() {
             "join" -> (ShareLink.parse(arg("text")) ?: error("not an invite")).let { invite ->
                 val joined = repo.joinList(invite); synced(app); "joined ${joined.name} ${joined.id}"
             }
+            "invite" -> group().let { g -> ShareLink.build(g, app.identity.deviceName) }
+            "leave" -> group().let { g -> app.sync.leave(g.id); "left ${g.name}" }
             "newgroup" -> repo.createGroup(arg("name")).let { g -> synced(app); "made group ${g.name} ${g.id}" }
             "newlist" -> {
                 val group = group()
@@ -89,7 +91,7 @@ class DevBridge : BroadcastReceiver() {
             }
             // Shows the "Sam joined Family" notification (with its sound) without needing a second phone.
             "fakejoin" -> group().let { g -> Notifications.showPeople(app, ListEvent.Joined(g.id, g.name, arg("text"))); "notified" }
-            else -> error("unknown cmd $cmd; one of lists, show, add, tick, untick, note, messages, say, newlist, newgroup, name, join, fakejoin")
+            else -> error("unknown cmd $cmd; one of lists, show, add, tick, untick, note, messages, say, newlist, newgroup, invite, leave, name, join, fakejoin")
         }
     }
 

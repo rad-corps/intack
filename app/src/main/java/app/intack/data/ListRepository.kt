@@ -417,7 +417,7 @@ class ListRepository(private val dir: File, private val identity: Identity) {
             ?: System.currentTimeMillis().let { now ->
                 TodoList(
                     invite.listId, invite.name, invite.secret, kind = invite.kind, addedAt = now, sectioned = true,
-                    joinNoteDue = now.takeIf { invite.kind == SpaceKind.GROUP },
+                    joinNoteDue = now.takeIf { invite.kind == SpaceKind.GROUP }, joinHelloDue = true,
                 ).also { save(it) }
             }
     }
@@ -642,6 +642,12 @@ class ListRepository(private val dir: File, private val identity: Identity) {
             result.conflicts.filter { it.winner.id != LIST_STATUS_ITEM }.forEach { _conflicts.tryEmit(it) }
             RemoteResult(result.accepted.map { list.items[it.id] to it }, newAudit)
         }
+
+    /** The others have been left a hello saying this phone joined. */
+    suspend fun joinHelloSent(listId: String): Unit = mutex.withLock {
+        val list = _lists.value[listId] ?: return
+        if (list.joinHelloDue) save(list.copy(joinHelloDue = false))
+    }
 
     /** Records that this device now has a complete copy of the list. */
     suspend fun markFullSynced(listId: String): Unit = mutex.withLock {

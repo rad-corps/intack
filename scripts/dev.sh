@@ -10,6 +10,9 @@
 #   bash scripts/dev.sh newlist "Adam and Claude" Dev
 #   bash scripts/dev.sh messages Family / say Family "A question"
 #   bash scripts/dev.sh name "Claude" / join "<invite link>"
+#   bash scripts/dev.sh newgroup "Test" / invite Test        (prints the group's invite link)
+#   bash scripts/dev.sh leave Test                           (leaves the group, and removes it from this phone)
+#   ADB="adb -s emulator-5556" bash scripts/dev.sh ...      (with more than one emulator running)
 #   bash scripts/dev.sh fakejoin Family Sam                (the "Sam joined" notification and sound)
 set -euo pipefail
 export MSYS_NO_PATHCONV=1
@@ -37,6 +40,9 @@ case $cmd in
   messages) send messages --es group "$(q "$1")" ;;
   say) send say --es group "$(q "$1")" --es text "$(q "$2")" ;;
   name) send name --es text "$(q "$1")" ;;
+  invite) send invite --es group "$(q "$1")" ;;
+  newgroup) send newgroup --es name "$(q "$1")" ;;
+  leave) send leave --es group "$(q "$1")" ;;
   join) send join --es text "$(q "$1")" ;;
   fakejoin) send fakejoin --es group "$(q "$1")" --es text "$(q "$2")" ;;
   *) sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;

@@ -5,6 +5,12 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+**Know when someone joins, even with the app closed.** When someone joins your group or a list you
+shared, their phone now leaves a note for everyone and wakes their phones, so you get the "Sam joined"
+notification (with its chime) within moments, and they're in your member list, even if nobody else had
+the app open at the time. You no longer also get a calendar notification about the "Sam joined the
+group" entry.
+
 ## v0.9.9 — 2026-10-21
 
 **Each section in its own panel.** In a list with headings, each heading and its items now sit together on

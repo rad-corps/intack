@@ -350,6 +350,14 @@ class SyncManager(context: Context, private val repo: ListRepository, private va
         // Stored edits don't include items nobody has touched lately, so ask until we've had a full copy.
         val wantFull = (!list.createdHere && !list.fullSynced) || stale
         relayList.awaitingFull = wantFull
+        // Just joined: leave a hello that the relays keep, and wake the others' phones, so they hear who
+        // joined (and add them to the members) even if nobody else has the app open right now.
+        if (list.joinHelloDue) {
+            relayList.trace("joined; leaving a hello for the others")
+            publishToRelays(relayList.listId, hello())
+            wake.send(ListKeys(list.secret).wakeTopic, urgent = true)
+            repo.joinHelloSent(relayList.listId)
+        }
         // Off screen there's nobody to greet: this only reconnected to listen (unless the list is still missing).
         if (!onScreen && !wantFull) return relayList.trace("caught up")
         relayList.trace("caught up; saying hello${if (wantFull) " and asking for the whole list" else ""}")
@@ -372,7 +380,11 @@ class SyncManager(context: Context, private val repo: ListRepository, private va
                 val name = nameFrom(message, event.created_at)
                 relayList.seen[message.deviceId] = name to SystemClock.elapsedRealtime()
                 val member = repo.recordMember(listId, message.deviceId, name)
-                if (member.worthAnnouncing && !inGroup(listId)) _events.tryEmit(ListEvent.Joined(listId, listName(listId), name))
+                // Hellos the relays kept from before this phone joined are people already here, not news.
+                val sinceWeJoined = event.created_at * 1000 >= (repo.lists.value[listId]?.addedAt ?: 0) - JOIN_SLACK_MS
+                if (member.worthAnnouncing && sinceWeJoined && !inGroup(listId)) {
+                    _events.tryEmit(ListEvent.Joined(listId, listName(listId), name))
+                }
                 val fresh = age < FRESH_HELLO_S
                 if (message.wantFull && fresh) sendFullViaRelays(relayList, message.deviceName)
                 // Still waiting for the whole list and someone new is around: ask them.
@@ -553,6 +565,8 @@ class SyncManager(context: Context, private val repo: ListRepository, private va
     private fun announceChanges(listId: String, changes: List<Pair<Item?, Item>>) {
         val kind = repo.lists.value[listId]?.kind ?: SpaceKind.LIST
         changes.mapNotNull { (before, after) ->
+            // "Sam joined the group" on the calendar: the joining phone's hello already announced it.
+            if (after.id.startsWith("joined-")) return@mapNotNull null
             // A message is announced as itself, and only when it arrives.
             if (kind == SpaceKind.CHAT) {
                 return@mapNotNull if (before == null && !after.deleted) Described(after, after.text, true, after.version.by) else null
@@ -685,6 +699,8 @@ class SyncManager(context: Context, private val repo: ListRepository, private va
         const val RELAY_CHUNK_BYTES = 120_000
         const val SINCE_MARGIN_S = 300L
         const val FRESH_HELLO_S = 120L
+        /** Phones' clocks differ: a hello this much older than our joining still counts as after it. */
+        const val JOIN_SLACK_MS = 5 * 60_000L
         const val FULL_RESEND_MS = 30_000L
         const val PRESENCE_WINDOW_MS = 30 * 60_000L
         /** Relays kept connected off screen (the first of [RELAYS]); others send to all of them. */
