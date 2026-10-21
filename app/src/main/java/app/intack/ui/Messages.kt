@@ -35,12 +35,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import app.intack.IntackApp
 import app.intack.model.Item
 import app.intack.model.TodoList
 import app.intack.model.chatRefs
+import app.intack.model.findLinks
 import app.intack.model.formatDay
 import app.intack.model.messages
 import app.intack.sync.Notifications
@@ -169,7 +176,7 @@ private fun MessageBubble(message: Item, mine: Boolean, showName: Boolean, name:
         ) {
             if (showName) Text(name, style = MaterialTheme.typography.labelLarge, color = personColor(message.version.by))
             Text(
-                message.text,
+                remember(message.text) { withLinks(message.text) },
                 style = MaterialTheme.typography.bodyLarge,
                 color = if (mine) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
             )
@@ -180,5 +187,16 @@ private fun MessageBubble(message: Item, mine: Boolean, showName: Boolean, name:
                 color = if (mine) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+    }
+}
+
+/** [text] with its web addresses underlined, each one opening in the browser when tapped. */
+private fun withLinks(text: String): AnnotatedString {
+    val links = findLinks(text)
+    if (links.isEmpty()) return AnnotatedString(text)
+    val style = TextLinkStyles(SpanStyle(textDecoration = TextDecoration.Underline))
+    return buildAnnotatedString {
+        append(text)
+        links.forEach { addLink(LinkAnnotation.Url(it.url, style), it.range.first, it.range.last + 1) }
     }
 }
