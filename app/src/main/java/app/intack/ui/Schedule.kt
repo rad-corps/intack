@@ -308,8 +308,8 @@ private fun EmptyCalendar(onInvite: (() -> Unit)?, onAdd: () -> Unit) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Nothing on yet", style = MaterialTheme.typography.headlineSmall.copy(fontFamily = Brand.Serif, fontSize = 24.sp))
             Text(
-                if (onInvite != null) "Plans are better shared. Invite your family, then add the first one together."
-                else "Add the first plan for everyone to see.",
+                if (onInvite != null) "Calendars are better shared. Invite your family, then add the first entry together."
+                else "Add the first calendar entry for everyone to see.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
@@ -318,9 +318,9 @@ private fun EmptyCalendar(onInvite: (() -> Unit)?, onAdd: () -> Unit) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (onInvite != null) {
                 BrandButton("Invite family", onClick = onInvite)
-                BrandTextButton("Add a plan", onClick = onAdd)
+                BrandTextButton("Calendar entry +", onClick = onAdd)
             } else {
-                BrandButton("Add a plan", onClick = onAdd)
+                BrandButton("Calendar entry +", onClick = onAdd)
             }
         }
     }

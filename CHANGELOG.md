@@ -5,6 +5,9 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+**Clearer button on an empty calendar.** The "Add a plan" button on a calendar with nothing on it now
+reads **Calendar entry +**, so it's plain that it adds an entry to the calendar.
+
 ## v0.9.11 — 2026-10-21
 
 **Your message stays in view.** When you send a message, the conversation now scrolls down to show it,
