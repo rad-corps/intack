@@ -5,6 +5,8 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+## v0.9.18 — 2026-10-23
+
 **Easier to read at the bottom.** The **Add an item** box in a list, and the message box in
 **Messages**, now sit on a solid bar instead of straight on the background photo, so the text
 and buttons stand out. The tab bar along the bottom is solid too.
