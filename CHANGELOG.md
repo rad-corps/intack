@@ -5,6 +5,10 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+**Easier to read at the bottom.** The **Add an item** box in a list, and the message box in
+**Messages**, now sit on a solid bar instead of straight on the background photo, so the text
+and buttons stand out. The tab bar along the bottom is solid too.
+
 ## v0.9.17 — 2026-10-22
 
 **Coloured sections.** In a list, tap **⋮** and choose **Add a section**. Give it a name, a colour,

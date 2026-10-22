@@ -128,6 +128,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.intack.R
 import app.intack.BuildConfig
@@ -648,8 +649,9 @@ internal fun ListScreen(app: IntackApp, list: TodoList, status: SyncStatus, snac
         },
         snackbarHost = { SnackbarHost(snackbar) },
     ) { padding ->
-        ListBody(app, list, status, onBack, Modifier.padding(padding).consumeWindowInsets(padding), locked = locked, onUnlock = { locked = false },
-            oneHanded = oneHanded, onFullScreen = { setOneHanded(false) })
+        // The bottom inset goes inside the add bar's pane, so the pane reaches the bottom of the screen.
+        ListBody(app, list, status, onBack, Modifier.padding(top = padding.calculateTopPadding()).consumeWindowInsets(padding), locked = locked, onUnlock = { locked = false },
+            oneHanded = oneHanded, onFullScreen = { setOneHanded(false) }, bottomInset = padding.calculateBottomPadding())
     }
 }
 
@@ -665,6 +667,7 @@ internal fun ListBody(
     onUnlock: () -> Unit = {},
     oneHanded: Boolean = false,
     onFullScreen: () -> Unit = {},
+    bottomInset: Dp = 0.dp,
 ) {
     val scope = rememberCoroutineScope()
     val tickOnLeft by app.tickOnLeft.collectAsStateWithLifecycle()
@@ -883,7 +886,7 @@ internal fun ListBody(
         // Locked: hold (not tap, which a bump could do) to unlock.
         if (locked) {
             Row(
-                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp).clip(RoundedCornerShape(12.dp))
+                Modifier.bottomPane().padding(bottom = bottomInset).fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp).clip(RoundedCornerShape(12.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant)
                     .combinedClickable(onClickLabel = null, onLongClickLabel = "Unlock", onClick = {}, onLongClick = onUnlock)
                     .padding(horizontal = 16.dp, vertical = 16.dp),
@@ -896,7 +899,7 @@ internal fun ListBody(
             return@Column
         }
         // At the bottom, within thumb reach, and lifted above the keyboard while typing.
-        Row(Modifier.fillMaxWidth().imePadding().padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.bottomPane().padding(bottom = bottomInset).fillMaxWidth().imePadding().padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             OutlinedTextField(
                 value = newText,
                 // Wraps onto a few lines (then scrolls) so a long item can be read and the cursor moved

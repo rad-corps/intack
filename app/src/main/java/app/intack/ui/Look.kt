@@ -204,3 +204,10 @@ fun photoAccents(photo: ImageBitmap): List<Long> {
         AndroidColor.HSVToColor(floatArrayOf(sample[0], sample[1].coerceIn(0.45f, 0.85f), 0.75f)).toLong() and 0xFFFFFFFFL
     }
 }
+
+/**
+ * A solid pane behind a bar at the bottom of the screen (the add bar, the message box), so its text and
+ * buttons aren't lost in a photo; it matches the tab bar.
+ */
+@Composable
+fun Modifier.bottomPane(): Modifier = background(MaterialTheme.colorScheme.surfaceContainer)

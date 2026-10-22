@@ -158,7 +158,7 @@ internal fun GroupScreen(
                 onHistory = if (tab == GroupTab.CALENDAR && calendar != null) ({ calendarHistory = true }) else null)
         },
         bottomBar = {
-            NavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.94f)) {
+            NavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainer) {
                 val unread = group.unreadMessages(lists, app.identity.deviceId)
                 val listsChanged = group.listRefs.any { ref -> ref.spaceId?.let { lists[it] }?.hasUnseenChanges(app.identity.deviceId) == true }
                 GroupTab.entries.forEach { option ->

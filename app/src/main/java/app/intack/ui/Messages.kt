@@ -113,7 +113,7 @@ internal fun MessagesTab(app: IntackApp, group: TodoList, lists: Map<String, Tod
             }
         }
         // At the bottom, within thumb reach, and lifted above the keyboard while typing.
-        Row(Modifier.fillMaxWidth().imePadding().padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.bottomPane().fillMaxWidth().imePadding().padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             OutlinedTextField(
                 value = text,
                 onValueChange = { text = it },
