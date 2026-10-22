@@ -150,6 +150,21 @@ class MergeTest {
     }
 
     @Test
+    fun latestSectionColourWinsAndSurvivesARename() {
+        val fruit = milk.copy(id = "fruit", text = "", heading = true)
+        val red = fruit.withColor("red", deviceId = "A", now = 200)
+        val blue = fruit.withColor("blue", deviceId = "B", now = 300)
+        assertEquals("blue", empty.with(red).merge(listOf(blue)).list.items.getValue("fruit").color)
+        assertEquals("blue", empty.with(blue).merge(listOf(red)).list.items.getValue("fruit").color)
+        // Naming it, on a version without colours, keeps the colour.
+        val named = fruit.edit("B", 400) { copy(text = "Fruit") }
+        val item = empty.with(red).merge(listOf(named)).list.items.getValue("fruit")
+        assertEquals("Fruit", item.text)
+        assertEquals("red", item.color)
+        assertNull(red.withColor(null, deviceId = "A", now = 500).color)
+    }
+
+    @Test
     fun editKeepsVersionsIncreasingWhenClockIsBehind() {
         val edited = milk.edit("B", now = 50) { copy(checked = true) }
         assertTrue(edited.version > milk.version)

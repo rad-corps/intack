@@ -118,6 +118,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
@@ -135,14 +136,11 @@ import app.intack.data.ALL_CALENDARS
 import app.intack.data.CrashLog
 import app.intack.data.HOME
 import app.intack.data.OTHER_LISTS
-import app.intack.model.BLANK_LIST
 import app.intack.model.calendarRef
 import app.intack.model.sharedLook
 import app.intack.net.SyncLog
 import app.intack.model.Invite
 import app.intack.model.Item
-import app.intack.model.LIST_TEMPLATES
-import app.intack.model.ListTemplate
 import app.intack.model.afterHeadingMove
 import app.intack.model.STATUS_DELETED
 import app.intack.model.ShareLink
@@ -481,9 +479,9 @@ private fun ListsScreen(
     }
 
     if (creating) {
-        NewSpaceDialog(onDismiss = { creating = false }) { name, kind, template ->
+        NewSpaceDialog(onDismiss = { creating = false }) { name, kind ->
             creating = false
-            scope.launch { onOpen(app.repo.createList(name, kind, template).id) }
+            scope.launch { onOpen(app.repo.createList(name, kind).id) }
         }
     }
 }
@@ -533,7 +531,7 @@ private fun NewGroupDialog(others: List<TodoList>, onDismiss: () -> Unit, onCrea
                 OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Group name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 if (diaries.isEmpty() && existingLists.isEmpty()) {
                     Spacer(Modifier.height(8.dp))
-                    Text("It comes with a calendar and a shopping list. Invite people once it's made.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("It comes with a calendar. Invite people once it's made.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 if (diaries.isNotEmpty()) {
                     Spacer(Modifier.height(16.dp))
@@ -745,9 +743,12 @@ internal fun ListBody(
                         label = "highlight",
                     )
                     val spot = spots[item.id]
+                    // A coloured section's pane is tinted with its colour.
+                    val tint = spot?.let { sectionColor(list.items[it.section]?.color) }
                     // The section an item is being dragged into lights up.
                     val fill by animateColorAsState(
-                        if (spot != null && spot.section == target) MaterialTheme.colorScheme.tertiaryContainer else paneColor,
+                        if (spot != null && spot.section == target) MaterialTheme.colorScheme.tertiaryContainer
+                        else tint?.copy(alpha = 0.22f)?.compositeOver(paneColor) ?: paneColor,
                         animationSpec = tween(150),
                         label = "pane",
                     )
@@ -810,7 +811,7 @@ internal fun ListBody(
                                     // Adds an item straight into this section.
                                     val plus = @Composable {
                                         if (!locked && riding == null) IconButton(onClick = { draftSection = item; drafting = true }) {
-                                            Icon(Icons.Default.Add, "Add to ${item.text}", tint = MaterialTheme.colorScheme.secondary)
+                                            Icon(Icons.Default.Add, "Add to ${item.text.ifBlank { "this section" }}", tint = sectionColor(item.color) ?: MaterialTheme.colorScheme.secondary)
                                         }
                                     }
                                     val title = @Composable { modifier: Modifier ->
@@ -819,7 +820,7 @@ internal fun ListBody(
                                             modifier.padding(vertical = 8.dp),
                                             style = MaterialTheme.typography.titleMedium,
                                             fontWeight = FontWeight.SemiBold,
-                                            color = MaterialTheme.colorScheme.secondary,
+                                            color = sectionColor(item.color) ?: MaterialTheme.colorScheme.secondary,
                                         )
                                     }
                                     if (!tickOnLeft) handle()
@@ -928,11 +929,12 @@ internal fun ListBody(
             headings = list.headings,
             section = sectionOf(list.visibleItems, item.id),
             onDismiss = { editing = null },
-            onSave = { text, headingId, note, photo ->
+            onSave = { text, headingId, note, photo, color ->
                 editing = null
                 val before = sectionOf(list.visibleItems, item.id)?.id
                 app.save {
                     app.repo.editText(list.id, item.id, text)
+                    if (item.heading) app.repo.setColor(list.id, item.id, color)
                     if (!item.heading) app.repo.setNote(list.id, item.id, note)
                     if (!item.heading && photo != PhotoChoice.Keep) app.repo.setImage(list.id, item.id, (photo as? PhotoChoice.Own)?.jpeg)
                     if (!item.heading && headingId != before) app.repo.moveToSection(list.id, item.id, headingId)
@@ -954,7 +956,7 @@ internal fun ListBody(
             headings = list.headings,
             section = draftSection?.let { h -> list.headings.firstOrNull { it.id == h.id } },
             onDismiss = { drafting = false; draftSection = null },
-            onSave = { text, headingId, note, photo ->
+            onSave = { text, headingId, note, photo, _ ->
                 drafting = false
                 draftSection = null
                 newText = ""
@@ -1024,10 +1026,10 @@ internal fun SpaceTopBar(
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                 extraMenu { menu = false }
                 if (list.kind == SpaceKind.LIST) {
-                    DropdownMenuItem(text = { Text("Add a heading") }, onClick = { menu = false; addingHeading = true })
+                    DropdownMenuItem(text = { Text("Add a section") }, onClick = { menu = false; addingHeading = true })
                     if (list.headings.isNotEmpty()) {
                         DropdownMenuItem(
-                            text = { Text(if (list.hideHeadings) "Show headings" else "Hide headings") },
+                            text = { Text(if (list.hideHeadings) "Show section headings" else "Hide section headings") },
                             onClick = { menu = false; app.save { app.repo.setHideHeadings(list.id, !list.hideHeadings) } },
                         )
                     }
@@ -1058,16 +1060,18 @@ internal fun SpaceTopBar(
     if (sharing) ShareDialog(app, list, onDismiss = { sharing = false })
     if (pickingTheme) ListLookEditorDialog(app, list, onDismiss = { pickingTheme = false })
     if (addingHeading) {
-        TextPromptDialog(
-            title = "Add a heading",
-            label = "Heading",
-            confirm = "Add",
-            supporting = "For example: Fruit & veg, Dairy, Bakery. It goes at the bottom; drag it, or move items into it.",
+        // A name and a colour, both optional: an unnamed, plain section still groups items.
+        ListItemSheet(
+            item = Item(id = "", text = "", createdAt = 0, version = Version(0, ""), editor = "", heading = true),
+            headings = emptyList(),
+            section = null,
             onDismiss = { addingHeading = false },
-        ) { name ->
-            addingHeading = false
-            app.save { app.repo.addItem(list.id, name, heading = true) }
-        }
+            onSave = { name, _, _, _, color ->
+                addingHeading = false
+                app.save { app.repo.addItem(list.id, name, heading = true, color = color) }
+            },
+            adding = true,
+        )
     }
     if (renaming) {
         TextPromptDialog(title = "Rename", label = "Name", confirm = "Save", initial = list.name, onDismiss = { renaming = false }) { name ->
@@ -1581,10 +1585,9 @@ private fun TodoList.summary(): String = if (isJoining) "Joining…" else if (ar
 
 /** Name plus a List / Diary choice. */
 @Composable
-private fun NewSpaceDialog(onDismiss: () -> Unit, onCreate: (String, SpaceKind, ListTemplate) -> Unit) {
+private fun NewSpaceDialog(onDismiss: () -> Unit, onCreate: (String, SpaceKind) -> Unit) {
     var name by remember { mutableStateOf("") }
     var kind by remember { mutableStateOf(SpaceKind.LIST) }
-    var template by remember { mutableStateOf(BLANK_LIST) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (kind == SpaceKind.DIARY) "New diary" else "New list") },
@@ -1600,19 +1603,11 @@ private fun NewSpaceDialog(onDismiss: () -> Unit, onCreate: (String, SpaceKind, 
                         ) { Text(option.label) }
                     }
                 }
-                if (kind == SpaceKind.LIST) {
-                    Spacer(Modifier.height(12.dp))
-                    TemplateChoice(template) { picked ->
-                        // Suggest its name, unless the user has typed one of their own.
-                        if (name.isBlank() || name == template.name) name = picked.name
-                        template = picked
-                    }
-                }
                 Spacer(Modifier.height(16.dp))
                 OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Name") }, singleLine = true)
             }
         },
-        confirmButton = { TextButton(onClick = { onCreate(name, kind, if (kind == SpaceKind.LIST) template else BLANK_LIST) }, enabled = name.isNotBlank()) { Text("Create") } },
+        confirmButton = { TextButton(onClick = { onCreate(name, kind) }, enabled = name.isNotBlank()) { Text("Create") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
 }
@@ -1785,25 +1780,6 @@ private fun StatusRequestDialog(app: IntackApp, lists: Map<String, TodoList>) {
             }
         },
     )
-}
-
-/** "Start from": a blank list, or one with headings ready (Groceries: Fresh, Bakery, Fridge…). */
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-internal fun TemplateChoice(selected: ListTemplate, onSelect: (ListTemplate) -> Unit) {
-    Text("Start from", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        LIST_TEMPLATES.forEach { template ->
-            FilterChip(selected = template == selected, onClick = { onSelect(template) }, label = { Text(template.label) })
-        }
-    }
-    if (selected.headings.isNotEmpty()) {
-        Text(
-            "Headings: ${selected.headings.joinToString(", ")}. Rename or remove them by tapping, or hide them from the ⋮ menu.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
 }
 
 /** An item travelling under its heading while the heading is dragged: how it looks in the list, but still. */

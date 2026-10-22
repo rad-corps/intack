@@ -8,6 +8,18 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.Icon
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -59,8 +71,8 @@ import app.intack.model.PhotoChoice
 import kotlinx.coroutines.launch
 
 /**
- * Change a list item: its words, its note, its photo, which section it's in, or delete it. For a heading: rename or delete
- * (deleting a heading leaves its items where they are). With [adding], it fills in a new item before it's added
+ * Change a list item: its words, its note, its photo, which section it's in, or delete it. For a section heading: its name and
+ * colour (both optional: an unnamed, plain section still groups items), or delete it (its items stay where they are). With [adding], it fills in a new item before it's added
  * (so it can have a note, photo and section from the start), and [item] is just its words so far.
  */
 @Composable
@@ -71,7 +83,7 @@ internal fun ListItemSheet(
     /** The heading the item is under now, if any. */
     section: Item?,
     onDismiss: () -> Unit,
-    onSave: (text: String, headingId: String?, note: String, photo: PhotoChoice) -> Unit,
+    onSave: (text: String, headingId: String?, note: String, photo: PhotoChoice, color: String?) -> Unit,
     onDelete: () -> Unit = {},
     history: List<AuditEntry> = emptyList(),
     historyRow: @Composable (AuditEntry) -> Unit = {},
@@ -83,6 +95,9 @@ internal fun ListItemSheet(
     var text by remember { mutableStateOf(item.text) }
     var headingId by remember { mutableStateOf(section?.id) }
     var note by remember { mutableStateOf(item.note ?: "") }
+    var color by remember { mutableStateOf(item.color) }
+    // Items need words; a heading needn't have a name.
+    val canSave = item.heading || text.isNotBlank()
     var showHistory by remember { mutableStateOf(false) }
     var photo by remember { mutableStateOf<PhotoChoice>(PhotoChoice.Keep) }
     var preview by remember { mutableStateOf<ImageBitmap?>(null) }
@@ -112,21 +127,30 @@ internal fun ListItemSheet(
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheet) {
         Column(Modifier.fillMaxWidth().imePadding().verticalScroll(rememberScrollState()).padding(start = 20.dp, end = 20.dp, bottom = 24.dp)) {
-            Text(if (adding) "New item" else if (item.heading) "Edit heading" else "Edit item", style = MaterialTheme.typography.titleLarge)
+            Text(if (item.heading) (if (adding) "New section" else "Edit section") else if (adding) "New item" else "Edit item", style = MaterialTheme.typography.titleLarge)
             Spacer(Modifier.height(16.dp))
             OutlinedTextField(
                 value = text,
                 onValueChange = { text = it },
-                label = { Text(if (item.heading) "Heading" else "Item") },
+                label = { Text(if (item.heading) "Name (optional)" else "Item") },
                 textStyle = MaterialTheme.typography.titleMedium,
                 // Adding: the keyboard's Done adds it, as in the add bar.
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = if (adding) ImeAction.Done else ImeAction.Default),
-                keyboardActions = KeyboardActions(onDone = { if (text.isNotBlank()) onSave(text, headingId, note, photo) }),
+                keyboardActions = KeyboardActions(onDone = { if (canSave) onSave(text, headingId, note, photo, color) }),
                 shape = RoundedCornerShape(12.dp),
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth().focusRequester(focus),
             )
             if (adding) LaunchedEffect(Unit) { focus.requestFocus() }
+            if (item.heading) {
+                Text(
+                    "Colour",
+                    Modifier.padding(top = 20.dp, bottom = 8.dp),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                ColorChoice(color) { color = it }
+            }
             if (!item.heading) {
                 Spacer(Modifier.height(12.dp))
                 OutlinedTextField(
@@ -170,24 +194,49 @@ internal fun ListItemSheet(
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(selected = headingId == null, onClick = { headingId = null }, label = { Text("None") })
                     headings.forEach { h ->
-                        FilterChip(selected = headingId == h.id, onClick = { headingId = h.id }, label = { Text(h.text) })
+                        FilterChip(
+                            selected = headingId == h.id,
+                            onClick = { headingId = h.id },
+                            label = { Text(h.text.ifBlank { UNNAMED_SECTION }) },
+                            leadingIcon = sectionColor(h.color)?.let { c -> { Box(Modifier.size(12.dp).clip(CircleShape).background(c)) } },
+                        )
                     }
                 }
             }
             Spacer(Modifier.height(24.dp))
             Button(
-                onClick = { if (text.isNotBlank()) onSave(text, headingId, note, photo) },
-                enabled = text.isNotBlank(),
+                onClick = { if (canSave) onSave(text, headingId, note, photo, color) },
+                enabled = canSave,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
             ) { Text(if (adding) "Add" else "Save", style = MaterialTheme.typography.titleMedium) }
             if (!adding) TextButton(onClick = onDelete, modifier = Modifier.fillMaxWidth()) {
-                Text(if (item.heading) "Delete heading (keeps its items)" else "Delete", color = MaterialTheme.colorScheme.error)
+                Text(if (item.heading) "Delete section (keeps its items)" else "Delete", color = MaterialTheme.colorScheme.error)
             }
             if (history.isNotEmpty()) {
                 TextButton(onClick = { showHistory = !showHistory }, modifier = Modifier.fillMaxWidth()) {
                     Text(if (showHistory) "Hide history" else "History (${history.size})")
                 }
                 if (showHistory) history.forEach { historyRow(it) }
+            }
+        }
+    }
+}
+
+/** Plain, then each of [SECTION_COLORS], as round swatches; the chosen one has a tick. */
+@Composable
+private fun ColorChoice(selected: String?, onSelect: (String?) -> Unit) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        (listOf<SectionColor?>(null) + SECTION_COLORS).forEach { option ->
+            val chosen = option?.key == selected
+            val fill = option?.color ?: MaterialTheme.colorScheme.surfaceContainer
+            Box(
+                Modifier.size(40.dp).clip(CircleShape).background(fill)
+                    .border(if (option == null || chosen) 2.dp else 0.dp, if (chosen) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outlineVariant, CircleShape)
+                    .clickable(role = Role.RadioButton) { onSelect(option?.key) }
+                    .semantics { contentDescription = option?.label ?: "Plain"; this.selected = chosen },
+                contentAlignment = Alignment.Center,
+            ) {
+                if (chosen) Icon(Icons.Default.Check, null, tint = if (option == null) MaterialTheme.colorScheme.onSurface else Color.White, modifier = Modifier.size(20.dp))
             }
         }
     }

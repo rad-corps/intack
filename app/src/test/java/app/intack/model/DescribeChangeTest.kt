@@ -18,6 +18,16 @@ class DescribeChangeTest {
     }
 
     @Test
+    fun describesUnnamedSections() {
+        val section = milk.copy(text = "", heading = true)
+        assertEquals("added a section", describeChange(null, section))
+        assertEquals("named a section Fruit", describeChange(section, section.edit { copy(text = "Fruit") }))
+        assertEquals("took the name off the heading Fruit", describeChange(section.copy(text = "Fruit"), section.edit { copy(text = "") }))
+        assertEquals("removed a section", describeChange(section, section.edit { copy(deleted = true) }))
+        assertNull(describeChange(section, section.withColor("red", "B", 200)))
+    }
+
+    @Test
     fun movesAndAlreadyDeletedItemsAreQuiet() {
         assertNull(describeChange(milk, milk.moved(5.0, "B", 200)))
         assertNull(describeChange(null, milk.copy(deleted = true)))

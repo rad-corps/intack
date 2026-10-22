@@ -5,6 +5,11 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+**Coloured sections.** In a list, tap **⋮** and choose **Add a section**. Give it a name, a colour,
+both or neither: a section with no name still groups items together. Tap a section to change its
+name or colour later. New lists now start empty (no ready-made Groceries or Packing headings), and a
+new group no longer comes with a shopping list, so you make your own from scratch.
+
 ## v0.9.16 — 2026-10-22
 
 **One-handed lists.** Shopping with one hand full? Open a list, tap the **⋮** menu and choose

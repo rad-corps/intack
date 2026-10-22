@@ -67,6 +67,12 @@ data class Item(
     val image: String? = null,
     val imageParts: Int = 0,
     val imageVersion: Version? = null,
+    /**
+     * A section heading's colour, by name ("red"; see SectionColors.kt), or null for plain. Synced as its own
+     * last-writer-wins value (stamped by [colorVersion]), like [note].
+     */
+    val color: String? = null,
+    val colorVersion: Version? = null,
 ) {
     val position: Double get() = pos ?: createdAt.toDouble()
     val localDate: LocalDate? get() = date?.let { runCatching { LocalDate.parse(it) }.getOrNull() }

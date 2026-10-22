@@ -31,10 +31,12 @@ fun describeChange(before: Item?, after: Item): String? = when {
     }
     after.id == GROUP_LOOK_ITEM -> if (after.deleted) null else "changed the group's look"
     after.heading -> when {
-        after.deleted -> if (before == null || before.deleted) null else "removed the heading ${before.text}"
-        before == null || before.deleted -> "added the heading ${after.text}"
-        before.text != after.text -> "renamed the heading ${before.text} to ${after.text}"
-        else -> null
+        after.deleted -> if (before == null || before.deleted) null else if (before.text.isBlank()) "removed a section" else "removed the heading ${before.text}"
+        before == null || before.deleted -> if (after.text.isBlank()) "added a section" else "added the heading ${after.text}"
+        before.text == after.text -> null
+        before.text.isBlank() -> "named a section ${after.text}"
+        after.text.isBlank() -> "took the name off the heading ${before.text}"
+        else -> "renamed the heading ${before.text} to ${after.text}"
     }
     after.deleted -> if (before == null || before.deleted) null else "removed ${before.text}${before.whenText()}"
     before == null || before.deleted -> "added ${after.text}${after.whenText()}"

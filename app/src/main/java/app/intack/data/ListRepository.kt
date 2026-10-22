@@ -2,10 +2,8 @@ package app.intack.data
 
 import android.util.Log
 import app.intack.model.AuditEntry
-import app.intack.model.BLANK_LIST
 import app.intack.model.calendarRef
 import app.intack.model.Conflict
-import app.intack.model.GROCERIES
 import app.intack.model.GROUP_LOOK_ITEM
 import app.intack.model.GROUP_NAME_ITEM
 import app.intack.model.statusItem
@@ -24,7 +22,6 @@ import app.intack.model.toJson
 import app.intack.model.Invite
 import app.intack.model.Item
 import app.intack.model.ListKeys
-import app.intack.model.ListTemplate
 import app.intack.model.SpaceKind
 import app.intack.model.TodoList
 import app.intack.model.Version
@@ -44,6 +41,7 @@ import app.intack.model.planGroup
 import app.intack.model.sectionsFromPositions
 import app.intack.model.syncedGroupName
 import app.intack.model.withNote
+import app.intack.model.withColor
 import app.intack.model.imageBase64
 import app.intack.model.imageParts
 import app.intack.model.imagePartId
@@ -100,10 +98,10 @@ class ListRepository(private val dir: File, private val identity: Identity) {
     private val _conflicts = MutableSharedFlow<Conflict>(extraBufferCapacity = 64)
     val conflicts: SharedFlow<Conflict> = _conflicts
 
-    suspend fun createList(name: String, kind: SpaceKind = SpaceKind.LIST, template: ListTemplate = BLANK_LIST): TodoList =
-        mutex.withLock { newSpace(name, kind, template = template) }
+    suspend fun createList(name: String, kind: SpaceKind = SpaceKind.LIST): TodoList =
+        mutex.withLock { newSpace(name, kind) }
 
-    private suspend fun newSpace(name: String, kind: SpaceKind, groupId: String? = null, template: ListTemplate = BLANK_LIST, birthText: String? = null): TodoList {
+    private suspend fun newSpace(name: String, kind: SpaceKind, groupId: String? = null, birthText: String? = null): TodoList {
         val fallback = when (kind) {
             SpaceKind.DIARY -> "Calendar"
             SpaceKind.GROUP -> "Family"
@@ -114,20 +112,8 @@ class ListRepository(private val dir: File, private val identity: Identity) {
             UUID.randomUUID().toString(), name.trim().ifEmpty { fallback }, ListKeys.newSecret(),
             createdHere = true, kind = kind, groupId = groupId, addedAt = System.currentTimeMillis(), sectioned = true,
         ).let { if (kind == SpaceKind.DIARY) it.copy(items = birthEntry(birthText ?: "${it.name} created").let { e -> mapOf(e.id to e) }) else it }
-            .let { if (kind == SpaceKind.LIST) it.copy(items = templateHeadings(template).associateBy { h -> h.id }) else it }
         save(list)
         return list
-    }
-
-    /** A new list's headings from its template, in order. */
-    private fun templateHeadings(template: ListTemplate): List<Item> {
-        val now = System.currentTimeMillis()
-        return template.headings.mapIndexed { i, text ->
-            Item(
-                id = UUID.randomUUID().toString(), text = text, createdAt = now, version = Version(now, identity.deviceId),
-                editor = identity.deviceName, pos = i + 1.0, posVersion = Version(now, identity.deviceId), heading = true,
-            )
-        }
     }
 
     /** A new calendar's first entry: when it was made ("Calendar created", or "Group: Family created"). */
@@ -166,8 +152,8 @@ class ListRepository(private val dir: File, private val identity: Identity) {
 
     /**
      * Starts a group, ready to invite people to. Its calendar is the diary [calendarId] if given (someone
-     * who already has one), otherwise a new one; [listIds] are existing lists to bring in. With none, it
-     * starts with a shopping list.
+     * who already has one), otherwise a new one; [listIds] are existing lists to bring in.
+     * Lists are left for the people in it to make from scratch.
      */
     suspend fun createGroup(name: String, calendarId: String? = null, listIds: List<String> = emptyList()): TodoList = withContext(NonCancellable) { createGroupLocked(name, calendarId, listIds) }
 
@@ -180,17 +166,16 @@ class ListRepository(private val dir: File, private val identity: Identity) {
             save(list.copy(groupId = group.id))
             putGroupItem(group.id, spaceItem(list))
         }
-        if (existing.none { it.kind == SpaceKind.LIST }) putGroupItem(group.id, spaceItem(newSpace("Shopping", SpaceKind.LIST, group.id, GROCERIES)))
         _lists.value.getValue(group.id)
     }
 
     /** Adds a new list to the group, for everyone in it. */
-    suspend fun addToGroup(groupId: String, name: String, kind: SpaceKind = SpaceKind.LIST, template: ListTemplate = BLANK_LIST): TodoList? =
-        withContext(NonCancellable) { addToGroupLocked(groupId, name, kind, template) }
+    suspend fun addToGroup(groupId: String, name: String, kind: SpaceKind = SpaceKind.LIST): TodoList? =
+        withContext(NonCancellable) { addToGroupLocked(groupId, name, kind) }
 
-    private suspend fun addToGroupLocked(groupId: String, name: String, kind: SpaceKind, template: ListTemplate): TodoList? = mutex.withLock {
+    private suspend fun addToGroupLocked(groupId: String, name: String, kind: SpaceKind): TodoList? = mutex.withLock {
         if (_lists.value[groupId]?.kind != SpaceKind.GROUP) return null
-        val space = newSpace(name, kind, groupId, template)
+        val space = newSpace(name, kind, groupId)
         putGroupItem(groupId, spaceItem(space))
         space
     }
@@ -483,11 +468,12 @@ class ListRepository(private val dir: File, private val identity: Identity) {
     }
 
     /**
-     * Adds an item (or, with [heading], a section heading) at the bottom of the list, with its [note] if
-     * it has one. With [section] (a heading's id), the item goes at the top of that section instead. Returns its id.
+     * Adds an item (or, with [heading], a section heading, which can have no name and a [color]) at the
+     * bottom of the list, with its [note] if it has one. With [section] (a heading's id), the item goes at the top of that section instead. Returns its id.
      */
-    suspend fun addItem(listId: String, text: String, heading: Boolean = false, note: String = "", section: String? = null): String? {
-        val trimmed = text.trim().ifEmpty { return null }
+    suspend fun addItem(listId: String, text: String, heading: Boolean = false, note: String = "", section: String? = null, color: String? = null): String? {
+        val trimmed = text.trim()
+        if (trimmed.isEmpty() && !heading) return null
         val id = UUID.randomUUID().toString()
         putLocal(listId) { list ->
             val now = System.currentTimeMillis()
@@ -504,15 +490,16 @@ class ListRepository(private val dir: File, private val identity: Identity) {
                 heading = heading,
                 section = into?.first,
             ).let { if (note.isBlank()) it else it.withNote(note, identity.deviceId, now) }
+                .let { if (color == null) it else it.withColor(color, identity.deviceId, now) }
         }
         return id
     }
 
-    /** Changes an item's (or heading's) text. Does nothing if it's the same. */
+    /** Changes an item's (or heading's) text. Does nothing if it's the same, or blank for an item (a heading can be unnamed). */
     suspend fun editText(listId: String, itemId: String, text: String) {
-        val trimmed = text.trim().ifEmpty { return }
+        val trimmed = text.trim()
         putLocal(listId) { list ->
-            val item = list.items[itemId]?.takeIf { it.text != trimmed } ?: return@putLocal null
+            val item = list.items[itemId]?.takeIf { it.text != trimmed && (it.heading || trimmed.isNotEmpty()) } ?: return@putLocal null
             item.edited(identity.deviceId, identity.deviceName, System.currentTimeMillis()) { copy(text = trimmed) }
         }
     }
@@ -573,6 +560,11 @@ class ListRepository(private val dir: File, private val identity: Identity) {
     /** Sets a list item's note; blank removes it. Does nothing if it's the same. */
     suspend fun setNote(listId: String, itemId: String, note: String) = putLocal(listId) { list ->
         list.items[itemId]?.takeIf { (it.note ?: "") != note.trim() }?.withNote(note, identity.deviceId, System.currentTimeMillis())
+    }
+
+    /** Sets a heading's [color] (null: plain). */
+    suspend fun setColor(listId: String, itemId: String, color: String?) = putLocal(listId) { list ->
+        list.items[itemId]?.takeIf { it.heading && it.color != color }?.withColor(color, identity.deviceId, System.currentTimeMillis())
     }
 
     /**

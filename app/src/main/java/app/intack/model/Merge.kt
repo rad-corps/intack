@@ -21,6 +21,10 @@ fun Item.moved(pos: Double, deviceId: String, now: Long, section: String? = this
 fun Item.withNote(note: String, deviceId: String, now: Long): Item =
     copy(note = note.trim().ifEmpty { null }, noteVersion = Version(maxOf(now, (noteVersion?.ts ?: 0) + 1), deviceId))
 
+/** Returns this heading in [color] (null: plain); doesn't create a content version. */
+fun Item.withColor(color: String?, deviceId: String, now: Long): Item =
+    copy(color = color, colorVersion = Version(maxOf(now, (colorVersion?.ts ?: 0) + 1), deviceId))
+
 private fun Item.sameContentAs(other: Item) =
     text == other.text && checked == other.checked && deleted == other.deleted && date == other.date && time == other.time
 
@@ -73,6 +77,8 @@ fun TodoList.merge(remote: Collection<Item>): MergeResult {
         merged = merged.copy(note = latestNote.note, noteVersion = latestNote.noteVersion)
         val latestImage = maxOf(l, r, compareBy(nullsFirst()) { it.imageVersion })
         merged = merged.copy(image = latestImage.image, imageParts = latestImage.imageParts, imageVersion = latestImage.imageVersion)
+        val latestColor = maxOf(l, r, compareBy(nullsFirst()) { it.colorVersion })
+        merged = merged.copy(color = latestColor.color, colorVersion = latestColor.colorVersion)
         if (merged != l) {
             items[r.id] = merged
             accepted += merged

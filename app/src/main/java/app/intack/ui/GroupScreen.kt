@@ -80,7 +80,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.intack.IntackApp
 import app.intack.data.ALL_CALENDARS
-import app.intack.model.BLANK_LIST
 import app.intack.model.SpaceKind
 import app.intack.model.TodoList
 import app.intack.model.Item
@@ -288,11 +287,10 @@ private fun ListsTab(app: IntackApp, group: TodoList, lists: Map<String, TodoLis
     // Set when the new list's name is already taken by one in use: the one in use.
     var sameName by remember { mutableStateOf<TodoList?>(null) }
     var name by remember { mutableStateOf("") }
-    var template by remember { mutableStateOf(BLANK_LIST) }
     fun create(listName: String) {
         creating = false
         sameName = null
-        scope.launch { app.repo.addToGroup(group.id, listName, template = template)?.let { onOpenSpace(it.id) } }
+        scope.launch { app.repo.addToGroup(group.id, listName)?.let { onOpenSpace(it.id) } }
     }
     Column(Modifier.fillMaxSize()) {
         LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(vertical = 8.dp)) {
@@ -327,7 +325,7 @@ private fun ListsTab(app: IntackApp, group: TodoList, lists: Map<String, TodoLis
         }
         // At the bottom, within thumb reach, like the add bars in lists and the calendar.
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Button(onClick = { name = ""; template = BLANK_LIST; creating = true }, modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(vertical = 14.dp)) {
+            Button(onClick = { name = ""; creating = true }, modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(vertical = 14.dp)) {
                 Icon(Icons.Default.Add, null)
                 Spacer(Modifier.width(8.dp))
                 Text("New list")
@@ -341,11 +339,6 @@ private fun ListsTab(app: IntackApp, group: TodoList, lists: Map<String, TodoLis
             text = {
                 Column {
                     Text("Everyone in ${group.name} will have it.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(Modifier.height(12.dp))
-                    TemplateChoice(template) { picked ->
-                        if (name.isBlank() || name == template.name) name = picked.name
-                        template = picked
-                    }
                     Spacer(Modifier.height(16.dp))
                     OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Name") }, singleLine = true)
                 }
@@ -380,7 +373,7 @@ private fun ListsTab(app: IntackApp, group: TodoList, lists: Map<String, TodoLis
                         sameName = null
                         scope.launch {
                             app.repo.archive(current.id)
-                            app.repo.addToGroup(group.id, name.trim(), template = template)?.let { onOpenSpace(it.id) }
+                            app.repo.addToGroup(group.id, name.trim())?.let { onOpenSpace(it.id) }
                         }
                     }
                     BrandTextButton("Call the new one “$other”") { create(other) }
