@@ -5,6 +5,11 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+**Empty calendar easier to read.** With a background photo, the **Nothing on yet** words on an
+empty **Calendar** (and other empty screens, such as **Messages** before anyone writes) now sit on a
+pale card instead of straight on the photo, so the grey text can be read. The pinned note above it
+is solid too.
+
 ## v0.9.18 — 2026-10-23
 
 **Easier to read at the bottom.** The **Add an item** box in a list, and the message box in

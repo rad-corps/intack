@@ -530,7 +530,7 @@ private fun SettingRow(icon: ImageVector, title: String, detail: String, danger:
 @Composable
 internal fun EmptyState(text: String) {
     Box(Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
-        Text(text, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+        Text(text, Modifier.photoPatch(), color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
     }
 }
 

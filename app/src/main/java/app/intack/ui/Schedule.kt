@@ -301,11 +301,11 @@ private fun EmptyCalendar(onInvite: (() -> Unit)?, onAdd: () -> Unit) {
         Box(Modifier.size(120.dp).clearAndSetSemantics {}) {
             Box(
                 Modifier.padding(14.dp).fillMaxSize().rotate(-4f).shadow(8.dp, RoundedCornerShape(14.dp), clip = false)
-                    .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(14.dp)),
+                    .background(LocalPhotoBacking.current ?: MaterialTheme.colorScheme.surface, RoundedCornerShape(14.dp)),
             )
             PinDot(Brand.Marigold, 16.dp, Modifier.align(Alignment.TopCenter).offset(y = 8.dp))
         }
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.photoPatch(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Nothing on yet", style = MaterialTheme.typography.headlineSmall.copy(fontFamily = Brand.Serif, fontSize = 24.sp))
             Text(
                 if (onInvite != null) "Calendars are better shared. Invite your group members, then add the first entry together."
