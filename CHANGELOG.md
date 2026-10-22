@@ -5,6 +5,8 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+## v0.9.19 — 2026-10-23
+
 **Empty calendar easier to read.** With a background photo, the **Nothing on yet** words on an
 empty **Calendar** (and other empty screens, such as **Messages** before anyone writes) now sit on a
 pale card instead of straight on the photo, so the grey text can be read. The pinned note above it
