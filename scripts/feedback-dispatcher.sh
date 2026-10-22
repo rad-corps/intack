@@ -1,24 +1,27 @@
 #!/usr/bin/env bash
-# Watches a list in the debug app on the emulator and starts a fresh, unattended Claude Code session
-# for each new open item, one at a time. A session that needs more information asks in the group's
-# Messages and stops; the next message from someone else in the group resumes it.
+# Watches a list through the relays (scripts/relay.js, no emulator) and starts a fresh, unattended Claude
+# Code session for each new open item, one at a time. A session that needs more information asks in the
+# group's Messages and stops; the next message from someone else in the group resumes it.
 #   bash scripts/feedback-dispatcher.sh          (normally started at logon; see the Startup folder)
 # State and logs live in %LOCALAPPDATA%\intack-dispatcher: log.txt, runs\, items\ (one file per item).
+# The relay client's own copy of the group (as "Adam's autonomous assistant") is in %LOCALAPPDATA%\intack-relay.
+# The emulator runs only while a session checks something on screen (scripts/emu.sh), and Gradle's
+# daemons are stopped after each session, so nothing heavy runs while it's only watching.
 set -uo pipefail
 export MSYS_NO_PATHCONV=1
 REPO=/c/dev/twodo
 LIST=${LIST:-479db47a-eef0-46c4-a24c-f252d25b8408}   # "App Feedback Notes" in Family
 GROUP=${GROUP:-Family}
 EVERY=${EVERY:-60}
-SDK="$LOCALAPPDATA/Android/Sdk"
-export PATH="$SDK/platform-tools:$PATH"
-# bigbox; other emulators (e.g. Roastbot on emulator-5558) may be running too, and plain adb refuses to pick.
+export PATH="$LOCALAPPDATA/Android/Sdk/platform-tools:$PATH"
+# bigbox, for sessions using scripts/dev.sh; other emulators may be running too, and plain adb refuses to pick.
 export ANDROID_SERIAL=${ANDROID_SERIAL:-emulator-5554}
 # A Unix-style path: xargs and friends treat the backslashes in $LOCALAPPDATA as escapes.
 STATE=$(cygpath -u "${STATE:-"$LOCALAPPDATA/intack-dispatcher"}")
 mkdir -p "$STATE/items" "$STATE/runs"
 LOCK=$(cygpath -w "$REPO/scripts/repo-lock.js")   # node needs a Windows path
-DEV() { bash "$REPO/scripts/dev.sh" "$@"; }
+RELAY=$(cygpath -w "$REPO/scripts/relay.js")
+DEV() { node "$RELAY" "$@"; }
 log() { echo "$(date '+%F %T') $*" | tee -a "$STATE/log.txt"; }
 
 # One dispatcher at a time.
@@ -26,15 +29,11 @@ if [ -f "$STATE/pid" ] && kill -0 "$(cat "$STATE/pid")" 2>/dev/null; then echo "
 echo $$ > "$STATE/pid"
 trap 'rm -f "$STATE/pid"' EXIT
 
-# The emulator, booted, with the app in front (it only syncs while open).
-ensure_app() {
-  if ! adb devices | grep -q "^emulator-.*device$"; then
-    log "starting the emulator"
-    powershell.exe -NoProfile -Command "Start-Process -WindowStyle Hidden '$(cygpath -w "$SDK/emulator/emulator.exe")' -ArgumentList '-avd bigbox -no-window -no-boot-anim -no-snapshot -gpu host -cores 4 -memory 4096 -feature -WiFiPacketStream,-NetsimWebUi,-NetsimCliUi,-BluetoothEmulation'" >/dev/null
-    for _ in $(seq 1 60); do [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = 1 ] && break; sleep 5; done
-  fi
-  adb shell dumpsys activity activities 2>/dev/null | grep -q "ResumedActivity.*app.intack.debug" ||
-    adb shell am start -n app.intack.debug/app.intack.MainActivity >/dev/null 2>&1
+# After a session: Gradle's daemons and the emulator hold ~8 GB and keep cores busy even when idle.
+tidy_up() {
+  (cd "$REPO" && ./gradlew --stop -q) >/dev/null 2>&1
+  powershell.exe -NoProfile -Command 'Get-CimInstance Win32_Process | Where-Object { $_.Name -eq "java.exe" -and $_.CommandLine -like "*KotlinCompileDaemon*" } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }' >/dev/null 2>&1
+  bash "$REPO/scripts/emu.sh" stop >/dev/null
 }
 
 # Runs Claude on an item: a new session, or a resumed one with a reply. Prints the session's status.
@@ -48,6 +47,7 @@ run_claude() { # item-id session-id prompt [resume] [item-text]
   node "$LOCK" setpid "$2" "$(cat /proc/$job/winpid 2>/dev/null || echo 0)"
   wait $job
   node "$LOCK" release "$2"
+  tidy_up
   local status; status=$(grep -o "STATUS: [A-Z]*.*" "$out" | tail -1)
   echo "${status:-STATUS: FAILED no status line (see $out)}"
 }
@@ -67,21 +67,25 @@ are both in the group, and either of them may direct you.
   Note: ${3:-(none)}
 
 Work it end to end, following the project's usual conventions and your memory: build it, run the unit
-tests, check it on the bigbox emulator (already running, debug app open), commit to main, and release
-with scripts/release.ps1 (Adam has said to release without asking). Then update the item through
-scripts/dev.sh: keep the original note text and add a plain-words line such as "Done in v0.9.1: ...", then
-tick it:  bash scripts/dev.sh note $LIST $1 "<note>"  and  bash scripts/dev.sh tick $LIST $1
-Leave the emulator with the debug app open on its group screen, and the git tree clean.
+tests, check it on screen on the bigbox emulator, commit to main, and release with scripts/release.ps1
+(Adam has said to release without asking). The emulator isn't running: start it with
+bash scripts/emu.sh start (it returns once the debug app is open), and stop it with bash scripts/emu.sh stop
+once you've finished with it. If the item says "(has a photo)", look at the photo first:
+  node scripts/relay.js image $LIST $1 <file.jpg>    then read that file.
+Then update the item through scripts/relay.js, which talks to the relays directly as the group's phones
+do: keep the original note text and add a plain-words line such as "Done in v0.9.1: ...", then tick it:
+  node scripts/relay.js note $LIST $1 "<note>"  and  node scripts/relay.js tick $LIST $1
+Leave the git tree clean.
 
 Whenever you need clarification, a decision, or permission (anything risky, destructive, costly, or
 outside this repo), ask in the group's Messages rather than guessing, starting with the item's name:
-  bash scripts/dev.sh say "$GROUP" "<item>: <question>"
+  node scripts/relay.js say "$GROUP" "<item>: <question>"
 then stop. You'll be resumed with the reply. If the item is a question rather than something to build,
 answer it there and tick the item. Only work on this item.
 
 The dispatcher has already told the group you're starting. When you finish, post one short message
 in plain words saying what changed and where to find it (e.g. the version, and where it is in the app):
-  bash scripts/dev.sh say "$GROUP" "Done: <item>. <what changed>"
+  node scripts/relay.js say "$GROUP" "Done: <item>. <what changed>"
 
 End your final reply with exactly one line: STATUS: DONE, STATUS: WAITING, or STATUS: FAILED <why>.
 EOF
@@ -93,7 +97,6 @@ seen="$STATE/messages.seen"
 
 log "watching $LIST in $GROUP"
 while true; do
-  ensure_app
   # Wait while another agent holds the repo, or anyone has changes in progress.
   if [ "$(node "$LOCK" status)" != free ]; then sleep "$EVERY"; continue; fi
   # Wait while someone (Adam or an interactive session) has changes in progress.
