@@ -5,6 +5,8 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+## v0.9.17 — 2026-10-22
+
 **Coloured sections.** In a list, tap **⋮** and choose **Add a section**. Give it a name, a colour,
 both or neither: a section with no name still groups items together. Tap a section to change its
 name or colour later. New lists now start empty (no ready-made Groceries or Packing headings), and a
