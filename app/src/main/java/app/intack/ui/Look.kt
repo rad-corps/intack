@@ -20,14 +20,17 @@ import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.intack.IntackApp
+import app.intack.model.ITEMS_CARDS
 import app.intack.model.Look
 import app.intack.model.SpaceKind
 import app.intack.model.TodoList
@@ -220,7 +223,30 @@ fun Modifier.bottomPane(): Modifier = background(MaterialTheme.colorScheme.surfa
  * screen's words), so grey text stays readable; without a photo it changes nothing.
  */
 @Composable
-fun Modifier.photoPatch(): Modifier {
+fun Modifier.photoPatch(horizontal: Dp = 16.dp, vertical: Dp = 12.dp): Modifier {
     val backing = LocalPhotoBacking.current ?: return this
-    return background(backing.copy(alpha = 0.85f), RoundedCornerShape(16.dp)).padding(horizontal = 16.dp, vertical = 12.dp)
+    return background(backing.copy(alpha = 0.85f), RoundedCornerShape(16.dp)).padding(horizontal = horizontal, vertical = vertical)
+}
+
+/**
+ * Over a photo, a pale strip behind a full-width row that sits straight on the page (the Archived
+ * header under the lists), inset like the cards around it; without a photo it changes nothing.
+ * Put it before the row's clickable, so the ripple stays inside the strip.
+ */
+@Composable
+fun Modifier.photoStrip(): Modifier {
+    val backing = LocalPhotoBacking.current ?: return this
+    return padding(horizontal = 12.dp, vertical = 4.dp).clip(RoundedCornerShape(16.dp)).background(backing.copy(alpha = 0.85f))
+}
+
+/**
+ * Over a photo, a fill for a [StyledRow] whose style leaves it see-through (lines or outlines, with no
+ * item colour), so a group's lists, people and settings, and a list's items outside any section's
+ * pane, aren't lost in the picture; otherwise none.
+ */
+@Composable
+fun photoRowFill(): Color {
+    val backing = LocalPhotoBacking.current ?: return Color.Transparent
+    val style = LocalListStyle.current
+    return if (style.items == ITEMS_CARDS || style.itemColor != null) Color.Transparent else backing.copy(alpha = 0.8f)
 }

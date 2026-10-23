@@ -297,7 +297,7 @@ private fun ListsTab(app: IntackApp, group: TodoList, lists: Map<String, TodoLis
             items(active + if (showArchived) archived else emptyList(), key = { it.id }) { ref ->
                 if (ref === archived.firstOrNull()) ArchivedHeader(archived.size, expanded = true) { showArchived = false }
                 val list = ref.spaceId?.let { lists[it] }
-                StyledRow(onClick = { list?.let { onOpenSpace(it.id) } }) {
+                StyledRow(fill = photoRowFill(), onClick = { list?.let { onOpenSpace(it.id) } }) {
                     Box(
                         Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.primaryContainer),
                         contentAlignment = Alignment.Center,
@@ -426,7 +426,7 @@ private fun GroupSettingsTab(
             if (people.isEmpty()) {
                 Text(
                     "Nobody else yet. Invite the people you want to share the calendar and lists with.",
-                    margin.padding(vertical = 8.dp),
+                    margin.padding(vertical = 8.dp).photoPatch(),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -474,7 +474,7 @@ private fun GroupSettingsTab(
 internal fun SectionTitle(text: String) {
     Text(
         text,
-        Modifier.padding(top = 4.dp, bottom = 8.dp),
+        Modifier.padding(top = 4.dp, bottom = 8.dp).photoPatch(horizontal = 10.dp, vertical = 4.dp),
         style = MaterialTheme.typography.titleSmall,
         color = MaterialTheme.colorScheme.secondary,
         fontWeight = FontWeight.SemiBold,
@@ -483,7 +483,7 @@ internal fun SectionTitle(text: String) {
 
 @Composable
 private fun PersonRow(id: String, name: String, detail: String, here: Boolean) {
-    StyledRow(contentPadding = PaddingValues(horizontal = 16.dp, vertical = (LocalListStyle.current.spacing - 4.dp).coerceAtLeast(4.dp))) {
+    StyledRow(fill = photoRowFill(), contentPadding = PaddingValues(horizontal = 16.dp, vertical = (LocalListStyle.current.spacing - 4.dp).coerceAtLeast(4.dp))) {
         Avatar(id, name)
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
@@ -517,7 +517,7 @@ internal fun Avatar(id: String, name: String, size: Int = 44) {
 @Composable
 private fun SettingRow(icon: ImageVector, title: String, detail: String, danger: Boolean = false, onClick: () -> Unit) {
     val tint = if (danger) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
-    StyledRow(onClick = onClick) {
+    StyledRow(fill = photoRowFill(), onClick = onClick) {
         Icon(icon, null, tint = if (danger) tint else MaterialTheme.colorScheme.primary)
         Spacer(Modifier.width(16.dp))
         Column {

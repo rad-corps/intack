@@ -833,7 +833,7 @@ internal fun ListBody(
                                 }
                                 riding?.forEach { CarriedItem(it, tickOnLeft) }
                             }
-                        } else StyledRow(fill = background, contentPadding = if (tickOnLeft) PaddingValues(start = 8.dp, end = 4.dp) else PaddingValues(start = 4.dp, end = 8.dp)) {
+                        } else StyledRow(fill = if (spot == null) background.compositeOver(photoRowFill()) else background, contentPadding = if (tickOnLeft) PaddingValues(start = 8.dp, end = 4.dp) else PaddingValues(start = 4.dp, end = 8.dp)) {
                             // The checkbox ticks (on the thumb's side); the words open the item to change or delete it.
                             val checkbox = @Composable {
                                 Checkbox(
@@ -1711,7 +1711,7 @@ private const val DELETE_EXPLAINED =
 @Composable
 internal fun ArchivedHeader(count: Int, expanded: Boolean, onToggle: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().clickable(onClick = onToggle).padding(horizontal = 16.dp, vertical = 14.dp),
+        Modifier.fillMaxWidth().photoStrip().clickable(onClick = onToggle).padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(Icons.Outlined.Inventory2, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))

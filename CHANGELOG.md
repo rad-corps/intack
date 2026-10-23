@@ -5,6 +5,11 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+**Easier to read over a photo.** With a background photo, the **Archived** row under a group's
+**Lists** now sits on a pale card, so it stands out. The same goes for other things that sat straight
+on the photo: in **Group settings**, the headings, people and settings rows; on **Lists**, the lists
+themselves when the look isn't cards; and the items in a list that aren't under a heading.
+
 ## v0.9.20 — 2026-10-23
 
 **Stop asking to archive.** When everything in a list is ticked, the **All done! Archive this
