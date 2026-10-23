@@ -450,6 +450,12 @@ class ListRepository(private val dir: File, private val identity: Identity) {
         save(list.copy(archiveOfferDeclinedAt = System.currentTimeMillis()))
     }
 
+    /** "Stop asking" to archiving a finished list: never offered again on this phone. */
+    suspend fun stopArchiveOffers(listId: String): Unit = mutex.withLock {
+        val list = _lists.value[listId] ?: return
+        save(list.copy(archiveOfferStopped = true))
+    }
+
     /** Records this phone's status [item] in [list] (applying [also]) and sends it (caller holds [mutex]). */
     private suspend fun putStatus(list: TodoList, item: Item, also: TodoList.() -> TodoList) {
         val entry = auditEntryFor(list.items[item.id], item)

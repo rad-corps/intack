@@ -82,6 +82,15 @@ class ArchiveTest {
     }
 
     @Test
+    fun stopAskingHoldsEvenAfterChanges() {
+        val ticked = milk.edited("A", "Phone A", 300) { copy(checked = true) }
+        val stopped = list.with(ticked).copy(archiveOfferStopped = true)
+        assertFalse(stopped.offerArchive)
+        val bread = Item("bread", "Bread", createdAt = 500, version = Version(500, "B"), editor = "Phone B", checked = true)
+        assertFalse(stopped.with(bread).offerArchive)
+    }
+
+    @Test
     fun statusChangeIsDescribed() {
         val archived = list.statusItem(STATUS_ARCHIVED, "B", "Sarah", 200)
         assertEquals("archived the list", describeChange(null, archived))

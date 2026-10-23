@@ -143,6 +143,8 @@ data class TodoList(
     val joinHelloDue: Boolean = false,
     /** Local only: when the user last said "not now" to archiving it with everything ticked. */
     val archiveOfferDeclinedAt: Long = 0,
+    /** Local only: the user said "stop asking" to archiving it when everything's ticked (it's still in the ⋮ menu). */
+    val archiveOfferStopped: Boolean = false,
     /** Local only: this phone's look for a list outside any group (null: [themeId] and the app's background). */
     val look: Look? = null,
     /** Local only: show the items without their headings on this phone. */

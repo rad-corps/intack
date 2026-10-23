@@ -1741,6 +1741,7 @@ private fun ArchiveBanner(app: IntackApp, list: TodoList, onBack: () -> Unit) {
                 color = MaterialTheme.colorScheme.onSecondaryContainer,
             )
             if (!list.archived) Row(Modifier.align(Alignment.End)) {
+                TextButton(onClick = { app.save { app.repo.stopArchiveOffers(list.id) } }) { Text("Stop asking") }
                 TextButton(onClick = { app.save { app.repo.declineArchiveOffer(list.id) } }) { Text("Not now") }
                 TextButton(onClick = { onBack(); app.save { app.repo.archive(list.id) } }) { Text("Archive") }
             }

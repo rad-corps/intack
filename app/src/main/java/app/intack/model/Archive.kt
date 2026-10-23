@@ -34,6 +34,9 @@ fun TodoList.pendingStatusRequest(myDeviceId: String): Item? {
 val TodoList.allDone: Boolean
     get() = kind == SpaceKind.LIST && visibleItems.filter { !it.heading }.let { it.isNotEmpty() && it.all { i -> i.checked } }
 
-/** Everything's ticked and the user hasn't said "not now" since the last change: offer to archive. */
+/**
+ * Everything's ticked and the user hasn't said "not now" since the last change, or "stop asking" at
+ * all (a list that gets added to again, like an ideas list): offer to archive.
+ */
 val TodoList.offerArchive: Boolean
-    get() = allDone && !archived && (items.values.filter { it.id != LIST_STATUS_ITEM }.maxOfOrNull { it.version.ts } ?: 0) > archiveOfferDeclinedAt
+    get() = allDone && !archived && !archiveOfferStopped && (items.values.filter { it.id != LIST_STATUS_ITEM }.maxOfOrNull { it.version.ts } ?: 0) > archiveOfferDeclinedAt

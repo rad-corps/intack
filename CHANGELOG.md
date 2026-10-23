@@ -5,6 +5,11 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+**Stop asking to archive.** When everything in a list is ticked, the **All done! Archive this
+list?** card now has a **Stop asking** button as well as **Not now**. Use it for lists you keep
+adding to: the card won't come back for that list on your phone. You can still archive it any time
+from the **⋮** menu.
+
 ## v0.9.19 — 2026-10-23
 
 **Empty calendar easier to read.** With a background photo, the **Nothing on yet** words on an
