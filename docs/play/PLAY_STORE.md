@@ -43,11 +43,13 @@ privacy policy URL, foreground service, exact alarms, store listing.
 
 **Assets:**
 - Icon 512×512: `docs/play/icon-512.png` (from the launcher icon).
-- Phone screenshots: `docs/play/screenshots/`, 1080×2400. **These still show the TwoDo name and the
-  older look: retake before uploading.** `scripts/screenshots.sh` makes them from demo data on two
-  emulators, but it replaces the debug app's data on both, so don't run it on the bigbox emulator
-  while that's in Adam's real groups. Use two fresh AVDs.
-- Feature graphic 1024×500: still to make (needed for production, optional for testing).
+- Phone screenshots: `docs/play/screenshots/`, eight 1080×2400 24-bit PNGs (taken 2026-10-26 on v0.9.21):
+  home, family calendar, groceries, messages, a photo on a list item, a group's own look, the invite QR,
+  history. `scripts/screenshots.sh` makes them from demo data (`scripts/demo_data.js`) on two
+  emulators, but it replaces the debug app's data on both, so never run it on bigbox: use the AVDs
+  `shot` (-port 5560) and `peer` (-port 5562). Screencaps come out RGBA; Play wants no alpha.
+- Feature graphic 1024×500: `docs/play/feature-graphic.png` (icon, wordmark, "Your family's calendar
+  & lists. No account, no ads.").
 
 ## App ID
 
