@@ -12,7 +12,6 @@ import app.intack.sync.CalendarAlerts
 import app.intack.sync.ListEvent
 import app.intack.sync.Notifications
 import app.intack.sync.SyncManager
-import app.intack.sync.SyncService
 import app.intack.sync.SyncWorker
 import app.intack.sync.WakeTopics
 import kotlinx.coroutines.CoroutineScope
@@ -168,10 +167,5 @@ class IntackApp : Application() {
     fun setDiagnostics(enabled: Boolean) {
         identity.diagnostics = enabled
         Diagnostics.setEnabled(enabled)
-    }
-
-    fun setBackgroundSync(enabled: Boolean) {
-        identity.backgroundSync = enabled
-        SyncService.setEnabled(this, enabled)
     }
 }

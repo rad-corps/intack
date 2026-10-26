@@ -5,6 +5,10 @@ GitHub release notes and renames it to the version, so this file and the release
 
 ## Unreleased
 
+**Sync in background is gone.** The setting kept a permanent notification running so changes arrived
+while the app was closed. Other phones now wake yours whenever something changes, so it is no longer
+needed, and the notification goes away.
+
 ## v0.9.21 — 2026-10-23
 
 **Easier to read over a photo.** With a background photo, the **Archived** row under a group's

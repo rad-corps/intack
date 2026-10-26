@@ -8,7 +8,6 @@
     <string name="no_code_in_image">Couldn\'t find a %1$s QR code in that image.</string>
     <string name="join_from_image">Join shared list</string>
     <string name="channel_conflicts">Sync conflicts</string>
-    <string name="channel_sync">Background sync</string>
     <string name="channel_people">People leaving</string>
     <string name="channel_joins">Someone joins</string>
     <string name="channel_changes">List changes</string>
@@ -17,6 +16,4 @@
     <string name="channel_reminders">Reminders</string>
     <string name="channel_messages">Messages</string>
     <string name="conflict_title">Conflicting edits in %1$s</string>
-    <string name="sync_service_title">Keeping lists in sync</string>
-    <string name="sync_service_text">Connected so other devices can reach this one</string>
 </resources>

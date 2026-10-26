@@ -144,8 +144,8 @@ it through the adults' phones). Not designed for children.
 - Servers involved (for reviewer notes if asked): our wake server and relay; public Nostr relays;
   public WebTorrent trackers and STUN servers; Google Firebase Cloud Messaging.
 
-**Foreground service** (`FOREGROUND_SERVICE_SPECIAL_USE`): optional **Sync in background**, off by
-default since v0.7.1.
+**Foreground service:** none since v0.9.22 (answer **No**). The optional **Sync in background** setting
+was removed rather than record the video Play asks for. The old answers, in case it comes back:
 - *Description:* "Optional, off by default. Intack keeps a family's shared calendar and lists in sync
   between their phones without storing their content on a server. Normally a push wakes the phone when
   something changes. For phones where pushes don't arrive (for example without Google Play services),

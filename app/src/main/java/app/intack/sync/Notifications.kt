@@ -20,7 +20,6 @@ import app.intack.model.describe
 
 object Notifications {
     const val CHANNEL_CONFLICTS = "conflicts"
-    const val CHANNEL_SYNC = "sync"
     const val CHANNEL_PEOPLE = "people"
     /** Its own channel because a channel's sound can't change once made: joins play [R.raw.joined]. */
     const val CHANNEL_JOINS = "joins"
@@ -44,7 +43,6 @@ object Notifications {
         context.getSystemService(NotificationManager::class.java).createNotificationChannels(
             listOf(
                 NotificationChannel(CHANNEL_CONFLICTS, context.getString(R.string.channel_conflicts), NotificationManager.IMPORTANCE_DEFAULT),
-                NotificationChannel(CHANNEL_SYNC, context.getString(R.string.channel_sync), NotificationManager.IMPORTANCE_MIN),
                 NotificationChannel(CHANNEL_PEOPLE, context.getString(R.string.channel_people), NotificationManager.IMPORTANCE_DEFAULT),
                 NotificationChannel(CHANNEL_JOINS, context.getString(R.string.channel_joins), NotificationManager.IMPORTANCE_DEFAULT).apply {
                     setSound(
@@ -59,6 +57,8 @@ object Notifications {
                 NotificationChannel(CHANNEL_MESSAGES, context.getString(R.string.channel_messages), NotificationManager.IMPORTANCE_HIGH),
             ),
         )
+        // Left over from the "Sync in background" setting, removed in 0.9.22.
+        context.getSystemService(NotificationManager::class.java).deleteNotificationChannel("sync")
     }
 
     /** "Sam joined Groceries" / "Sam left Groceries". */

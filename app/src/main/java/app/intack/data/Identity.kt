@@ -182,11 +182,6 @@ class Identity(context: Context) {
     var crashesSeenUpTo: Long
         get() = prefs.getLong("crashesSeenUpTo", 0)
         set(value) = prefs.edit { putLong("crashesSeenUpTo", value) }
-
-    var backgroundSync: Boolean
-        // Off by default once wake pushes exist: other phones wake this one when something changes.
-        get() = prefs.getBoolean("backgroundSync", BuildConfig.WAKE_URL.isEmpty())
-        set(value) = prefs.edit { putBoolean("backgroundSync", value) }
 }
 
 /** [Identity.lastView] for the app's home: every group, and ways to start or join one. */

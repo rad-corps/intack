@@ -1311,7 +1311,6 @@ private fun JoinDialog(onDismiss: () -> Unit, onJoin: (Invite) -> Unit) {
 @Composable
 private fun SettingsDialog(app: IntackApp, onDismiss: () -> Unit, onNotifications: () -> Unit) {
     var name by remember { mutableStateOf(if (app.identity.hasName) app.identity.deviceName else "") }
-    var background by remember { mutableStateOf(app.identity.backgroundSync) }
     val themeId by app.appTheme.collectAsStateWithLifecycle()
     val appLook by app.appLook.collectAsStateWithLifecycle()
     var pickingTheme by remember { mutableStateOf(false) }
@@ -1420,18 +1419,6 @@ private fun SettingsDialog(app: IntackApp, onDismiss: () -> Unit, onNotification
                     }
                     Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.outline)
                 }
-                Spacer(Modifier.height(16.dp))
-                Row(Modifier.fillMaxWidth().toggleable(value = background, onValueChange = { background = it }), verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text("Sync in background")
-                        Text(
-                            "Usually not needed: the others' phones wake this one when something changes. Turn on if changes arrive late. Shows a permanent notification and uses some battery.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Switch(checked = background, onCheckedChange = null)
-                }
                 // Developer tools: crash reports, the diagnostics overlay and the connection log.
                 if (BuildConfig.DEBUG) {
                     Spacer(Modifier.height(16.dp))
@@ -1498,7 +1485,6 @@ private fun SettingsDialog(app: IntackApp, onDismiss: () -> Unit, onNotification
                     app.identity.directConnections = direct
                     app.sync.refresh()
                 }
-                if (background != app.identity.backgroundSync) app.setBackgroundSync(background)
                 if (diagnostics != app.identity.diagnostics) app.setDiagnostics(diagnostics)
                 onDismiss()
             }) { Text("Save") }

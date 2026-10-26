@@ -68,8 +68,6 @@ notes attached — which is what Obtainium watches.
 2. Phone B: **Join list → Scan QR code** (or paste the link sent via **Send link**).
 3. Both phones show "Connected to …" once they've found each other; edits then sync live.
 
-Turn on **Settings → Sync in background** to stay reachable while the app is closed.
-
 **Diaries** work the same way (**New → Diary**): swipe between days, tap the date to pick or type one,
 and add entries with an optional time. Tap an entry to edit, move or delete it.
 

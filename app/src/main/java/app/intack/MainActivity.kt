@@ -27,7 +27,6 @@ import app.intack.data.Diagnostics
 import app.intack.model.Invite
 import app.intack.model.ShareLink
 import app.intack.sync.Notifications
-import app.intack.sync.SyncService
 import app.intack.ui.DiagnosticsOverlay
 import app.intack.ui.QrImage
 import app.intack.ui.IntackRoot
@@ -83,9 +82,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
-        // Started here, while the app is on screen: Android only allows starting it from the foreground,
-        // and this brings it back if it was stopped while the app was in the background.
-        if (app.identity.backgroundSync) SyncService.setEnabled(this, true)
         app.visibleActivities++
         Diagnostics.setVisible(true)
         app.sync.setOnScreen(true)

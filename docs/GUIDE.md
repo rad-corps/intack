@@ -137,7 +137,6 @@ To update later, send the new APK and repeat — it installs over the old one an
 2. Phone 1: **New list** → add items → **Share** shows a QR code.
 3. Phone 2: **Join list** → **Scan QR code** (allow camera) → point at the code.
 4. For the real test, put one phone on Wi-Fi and the other on mobile data.
-5. To stay in sync while the app is closed, turn on **Settings → Sync in background** on both.
 
 ## 3. Working on another computer (e.g. a laptop)
 
